@@ -1,0 +1,68 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: resolvehub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: resolvehub
+      POSTGRES_USER: resolvehub
+      POSTGRES_PASSWORD: resolvehub
+    ports:
+      - "5432:5432"
+    volumes:
+      - resolvehub-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resolvehub -d resolvehub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: resolvehub-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - resolvehub-ollama-data:/root/.ollama
+
+  backend:
+    build:
+      context: ./backend
+    container_name: resolvehub-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/resolvehub
+      SPRING_DATASOURCE_USERNAME: resolvehub
+      SPRING_DATASOURCE_PASSWORD: resolvehub
+      RESOLVEHUB_AI_PROVIDER: ollama
+      RESOLVEHUB_AI_BASE_URL: http://ollama:11434/v1
+      RESOLVEHUB_AI_MODEL: llama3.1:8b
+    ports:
+      - "8080:8080"
+    profiles:
+      - app
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: resolvehub-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+    ports:
+      - "5173:5173"
+    profiles:
+      - app
+
+volumes:
+  resolvehub-postgres-data:
+  resolvehub-ollama-data:

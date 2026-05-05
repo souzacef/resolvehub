@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend build and tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Check backend project exists
+        id: backend_exists
+        run: |
+          if [ -f "pom.xml" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and test backend
+        if: steps.backend_exists.outputs.exists == 'true'
+        run: mvn --batch-mode clean verify
+
+      - name: Skip backend build
+        if: steps.backend_exists.outputs.exists != 'true'
+        run: echo "backend/pom.xml not found yet. Skipping backend build during skeleton phase."
+
+  frontend:
+    name: Frontend build and tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Check frontend project exists
+        id: frontend_exists
+        run: |
+          if [ -f "package.json" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install dependencies
+        if: steps.frontend_exists.outputs.exists == 'true'
+        run: npm ci
+
+      - name: Run frontend tests
+        if: steps.frontend_exists.outputs.exists == 'true'
+        run: npm test -- --run
+
+      - name: Build frontend
+        if: steps.frontend_exists.outputs.exists == 'true'
+        run: npm run build
+
+      - name: Skip frontend build
+        if: steps.frontend_exists.outputs.exists != 'true'
+        run: echo "frontend/package.json not found yet. Skipping frontend build during skeleton phase."
