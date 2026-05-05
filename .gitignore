@@ -1,13 +1,13 @@
-# OS files
+# Operating system
 .DS_Store
 Thumbs.db
 
-# IDE/editor
+# Editor and IDE
 .idea/
 .vscode/
 *.iml
 
-# Environment files
+# Environment and secrets
 .env
 .env.*
 !.env.example
@@ -16,12 +16,11 @@ Thumbs.db
 *.log
 logs/
 
-# Java / Maven
+# Java and Maven
 target/
 *.class
-.mvn/wrapper/maven-wrapper.jar
 
-# Node / frontend
+# Node and frontend
 node_modules/
 dist/
 build/
@@ -31,14 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Docker/local volumes
+# Local runtime data
 docker-data/
 postgres-data/
 ollama-data/
 
-# Testcontainers
+# Testcontainers local config
 .testcontainers.properties
 
-# Generated files
+# Generic temp files
 *.tmp
 *.bak

@@ -43,7 +43,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: resolvehub
       RESOLVEHUB_AI_PROVIDER: ollama
       RESOLVEHUB_AI_BASE_URL: http://ollama:11434/v1
-      RESOLVEHUB_AI_MODEL: llama3.1:8b
+      RESOLVEHUB_AI_MODEL: qwen2.5:7b
     ports:
       - "8080:8080"
     profiles:

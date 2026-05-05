@@ -70,7 +70,7 @@ Default configuration:
 ```text
 RESOLVEHUB_AI_PROVIDER=ollama
 RESOLVEHUB_AI_BASE_URL=http://localhost:11434/v1
-RESOLVEHUB_AI_MODEL=llama3.1:8b
+RESOLVEHUB_AI_MODEL=qwen2.5:7b
 ```
 
 In Docker Compose, the backend should use:
@@ -185,7 +185,7 @@ Manual tests:
 Example Ollama setup:
 
 ```bash
-ollama pull llama3.1:8b
+ollama pull qwen2.5:7b
 ollama serve
 ```
 
@@ -194,5 +194,5 @@ Then configure backend:
 ```bash
 export RESOLVEHUB_AI_PROVIDER=ollama
 export RESOLVEHUB_AI_BASE_URL=http://localhost:11434/v1
-export RESOLVEHUB_AI_MODEL=llama3.1:8b
+export RESOLVEHUB_AI_MODEL=qwen2.5:7b
 ```

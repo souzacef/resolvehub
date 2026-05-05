@@ -1,179 +1,111 @@
 # ResolveHub
 
-ResolveHub is a portfolio-grade customer support ticket platform focused on realistic backend engineering, clean product workflows, and AI-assisted support operations.
+ResolveHub is a portfolio-grade customer support ticket platform focused on backend engineering quality, practical product workflows, and deployment-ready project discipline.
 
-The project explores agent-assisted software development while keeping the important decisions human-reviewed: architecture, business rules, tests, documentation, and deployment flow.
+The repository currently contains a clean, reviewed foundation: architecture decisions, testing strategy, AI provider design, local infrastructure, and CI scaffolding.
 
-## What ResolveHub demonstrates
+## Mission
 
-- Customer support ticket workflows
-- Organization-based multi-tenancy
-- Role-based access control
-- JWT authentication
-- SLA calculation and overdue detection
-- Audit logging for business-critical actions
-- AI-assisted ticket classification
-- Backend testing with unit and integration tests
-- Docker-based local development
-- GitHub-centered workflow with CI and pull requests
+Build a professional full-stack support platform that demonstrates:
 
-## Planned stack
+- organization-based multi-tenancy
+- secure authentication and authorization
+- ticket workflow and SLA handling
+- auditability and operational reliability
+- AI-assisted classification with safe fallbacks
+- realistic tests, documentation, and delivery workflow
 
-### Backend
+## Product scope
 
-- Java 21
-- Spring Boot
-- Spring Security
-- JWT
-- PostgreSQL
-- JPA/Hibernate
-- Flyway
-- JUnit 5
-- Testcontainers
-- Swagger/OpenAPI
+ResolveHub helps organizations manage customer support tickets from creation to closure.
 
-### Frontend
+Primary roles:
 
-- React
-- TypeScript
-- Vite
+- `CUSTOMER`: creates and follows their own tickets
+- `AGENT`: handles assigned or unassigned tickets in their organization
+- `MANAGER`: manages assignment, escalations, and workflow operations
+- `ADMIN`: manages organization-level users and settings
 
-### Infrastructure
-
-- Docker Compose
-- GitHub Actions
-- PostgreSQL container
-- Local Ollama-compatible AI provider support
-
-## Product concept
-
-ResolveHub helps organizations manage customer support tickets from creation to resolution. It supports customers, support agents, managers, and admins.
-
-The system will help classify tickets using AI, calculate SLA deadlines, track overdue work, and preserve a clear audit trail for status and assignment changes.
-
-## User roles
-
-| Role | Purpose |
-|---|---|
-| CUSTOMER | Creates tickets and comments on their own tickets |
-| AGENT | Handles assigned or unassigned tickets within the organization |
-| MANAGER | Manages support workflow, escalations, assignments, and metrics |
-| ADMIN | Manages organization settings and users |
-
-## Ticket lifecycle
+Ticket lifecycle:
 
 ```text
 OPEN -> IN_PROGRESS -> WAITING_CUSTOMER -> RESOLVED -> CLOSED
 ```
 
-Possible controlled transitions:
+Controlled reopen behavior:
 
 ```text
 RESOLVED -> IN_PROGRESS
-CLOSED -> IN_PROGRESS, only by manager/admin
+CLOSED -> IN_PROGRESS (MANAGER or ADMIN only)
 ```
 
-## Ticket priorities
+## Tech stack
 
-```text
-LOW
-MEDIUM
-HIGH
-URGENT
-```
+Backend:
 
-## Ticket categories
+- Java 21
+- Spring Boot
+- Spring Security + JWT
+- PostgreSQL + JPA/Hibernate + Flyway
+- Validation + OpenAPI/Swagger
+- JUnit 5 + Testcontainers
 
-```text
-BILLING
-TECHNICAL
-ACCOUNT
-FEATURE_REQUEST
-SECURITY
-OTHER
-```
+Frontend:
 
-## MVP scope
+- React
+- TypeScript
+- Vite
 
-Version 1.0.0 should include:
+Infrastructure:
 
-- User registration and login
-- JWT-based authentication
-- Organization-scoped users and tickets
-- Role-based authorization
-- Ticket creation
-- Ticket listing and filtering
-- Ticket assignment
-- Ticket comments
-- Ticket status workflow validation
-- SLA policy calculation
-- Overdue ticket detection
-- Audit logging
-- AI provider abstraction
-- Local Ollama-based AI classification
-- Fake AI provider for tests
-- Docker Compose setup
-- GitHub Actions CI
-- API documentation
-- Professional README and documentation
+- Docker Compose
+- GitHub Actions
+- Local Ollama-compatible AI endpoint
 
-## Out of scope for v1.0.0
-
-- Real email delivery
-- Real payment/billing integration
-- Complex analytics dashboards
-- Mobile app
-- Multi-language UI
-- Full production Kubernetes deployment
-- Automatic AI decision-making without human approval
-
-## Local development target
-
-The intended local development flow:
-
-```bash
-docker compose up -d db ollama
-cd backend
-./mvnw spring-boot:run
-cd ../frontend
-npm install
-npm run dev
-```
-
-Backend and frontend implementation will be added incrementally.
-
-## Repository structure
+## Repository layout
 
 ```text
 resolvehub/
   backend/
-    src/
-    pom.xml
-    Dockerfile
   frontend/
-    src/
-    package.json
-    Dockerfile
   docs/
     architecture.md
     ai-provider-design.md
     testing-strategy.md
     deployment.md
   .github/
-    workflows/
-      ci.yml
     pull_request_template.md
+    workflows/ci.yml
   docker-compose.yml
   README.md
   .gitignore
 ```
 
-## Development workflow
+## Local infrastructure
 
-Recommended branch pattern:
+Start the foundational services:
+
+```bash
+docker compose up -d db ollama
+```
+
+Start application containers when backend/frontend Dockerfiles are available:
+
+```bash
+docker compose --profile app up --build
+```
+
+## Development standards
+
+- Keep changes small and reviewable.
+- Enforce tenant boundaries and authorization in backend logic.
+- Add or update tests with behavior changes.
+- Keep docs aligned with implementation changes.
+- Never commit secrets.
+
+Recommended branches:
 
 ```text
-main
 feature/<issue-number>-short-description
 fix/<issue-number>-short-description
 docs/<issue-number>-short-description
@@ -185,17 +117,9 @@ Recommended commit format:
 type(scope): short description
 ```
 
-Examples:
+## Documentation index
 
-```text
-chore(repo): add initial project skeleton
-docs(architecture): document backend module boundaries
-feat(auth): add JWT login endpoint
-test(tickets): cover invalid status transitions
-```
-
-## Project status
-
-Current status: repository skeleton and planning phase.
-
-Next implementation step: create the backend Spring Boot foundation with health checks, database connectivity, Flyway setup, and authentication scaffolding.
+- Architecture: [docs/architecture.md](docs/architecture.md)
+- AI provider design: [docs/ai-provider-design.md](docs/ai-provider-design.md)
+- Testing strategy: [docs/testing-strategy.md](docs/testing-strategy.md)
+- Deployment notes: [docs/deployment.md](docs/deployment.md)
