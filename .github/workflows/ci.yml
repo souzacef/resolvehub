@@ -29,11 +29,39 @@ jobs:
         run: |
           find . -maxdepth 3 -type f | sort
 
+  detect-projects:
+    name: Detect project folders
+    runs-on: ubuntu-latest
+    outputs:
+      backend_exists: ${{ steps.detect.outputs.backend_exists }}
+      frontend_exists: ${{ steps.detect.outputs.frontend_exists }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect backend and frontend projects
+        id: detect
+        run: |
+          if [ -f backend/pom.xml ]; then
+            echo "backend_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -f frontend/package.json ]; then
+            echo "frontend_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
   backend:
     name: Backend build and tests
     runs-on: ubuntu-latest
-    needs: repository-validation
-    if: ${{ hashFiles('backend/pom.xml') != '' }}
+    needs:
+      - repository-validation
+      - detect-projects
+    if: ${{ needs.detect-projects.outputs.backend_exists == 'true' }}
 
     steps:
       - name: Checkout repository
@@ -48,13 +76,15 @@ jobs:
 
       - name: Build and test backend
         working-directory: backend
-        run: mvn clean verify
+        run: ./mvnw clean verify
 
   frontend:
     name: Frontend build and tests
     runs-on: ubuntu-latest
-    needs: repository-validation
-    if: ${{ hashFiles('frontend/package.json') != '' }}
+    needs:
+      - repository-validation
+      - detect-projects
+    if: ${{ needs.detect-projects.outputs.frontend_exists == 'true' }}
 
     steps:
       - name: Checkout repository
