@@ -1,0 +1,5 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/resolvehub}
+    username: ${SPRING_DATASOURCE_USERNAME:resolvehub}
+    password: ${SPRING_DATASOURCE_PASSWORD:resolvehub}
