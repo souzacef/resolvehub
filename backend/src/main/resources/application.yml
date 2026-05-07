@@ -1,6 +1,8 @@
 spring:
   application:
     name: resolvehub-backend
+  profiles:
+    default: dev
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/resolvehub}
     username: ${SPRING_DATASOURCE_USERNAME:resolvehub}
@@ -26,3 +28,10 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+resolvehub:
+  security:
+    jwt:
+      # Plain text UTF-8 secret for HS256. Use at least 32 characters.
+      secret: ${JWT_SECRET:resolvehub-dev-secret-key-change-this-in-production-2026}
+      expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}

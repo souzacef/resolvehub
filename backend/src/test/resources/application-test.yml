@@ -6,6 +6,12 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create-drop
   flyway:
     enabled: false
+
+resolvehub:
+  security:
+    jwt:
+      secret: test-secret-key-for-jwt-signing-with-minimum-length
+      expiration-seconds: 3600
