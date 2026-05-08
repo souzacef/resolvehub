@@ -21,6 +21,7 @@ import com.resolvehub.ticketcomment.repository.TicketCommentRepository;
 import com.resolvehub.user.domain.Role;
 import com.resolvehub.user.domain.User;
 import com.resolvehub.user.repository.UserRepository;
+import java.time.OffsetDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -257,6 +258,7 @@ class TicketAssignmentIntegrationTest {
         ticket.setStatus(status);
         ticket.setPriority(TicketPriority.MEDIUM);
         ticket.setCategory(TicketCategory.OTHER);
+        ticket.setSlaDueAt(OffsetDateTime.now().plusHours(24));
         return ticketRepository.save(ticket);
     }
 

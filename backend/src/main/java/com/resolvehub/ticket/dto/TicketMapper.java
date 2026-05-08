@@ -17,6 +17,7 @@ public class TicketMapper {
                 ticket.getStatus(),
                 ticket.getPriority(),
                 ticket.getCategory(),
+                ticket.getSlaDueAt(),
                 ticket.getCreatedAt(),
                 ticket.getUpdatedAt()
         );

@@ -54,6 +54,9 @@ public class Ticket {
     @Column(nullable = false, length = 40)
     private TicketCategory category;
 
+    @Column(name = "sla_due_at", nullable = false)
+    private OffsetDateTime slaDueAt;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -128,8 +131,20 @@ public class Ticket {
         this.category = category;
     }
 
+    public OffsetDateTime getSlaDueAt() {
+        return slaDueAt;
+    }
+
+    public void setSlaDueAt(OffsetDateTime slaDueAt) {
+        this.slaDueAt = slaDueAt;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public OffsetDateTime getUpdatedAt() {
@@ -141,8 +156,8 @@ public class Ticket {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         this.id = this.id == null ? UUID.randomUUID() : this.id;
         this.status = this.status == null ? TicketStatus.OPEN : this.status;
-        this.createdAt = now;
-        this.updatedAt = now;
+        this.createdAt = this.createdAt == null ? now : this.createdAt;
+        this.updatedAt = this.updatedAt == null ? this.createdAt : this.updatedAt;
     }
 
     @PreUpdate

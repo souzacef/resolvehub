@@ -12,6 +12,8 @@ import com.resolvehub.ticket.repository.TicketRepository;
 import com.resolvehub.user.domain.Role;
 import com.resolvehub.user.domain.User;
 import com.resolvehub.user.repository.UserRepository;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
@@ -41,11 +43,18 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final TicketMapper ticketMapper;
+    private final SlaDeadlineCalculator slaDeadlineCalculator;
 
-    public TicketService(TicketRepository ticketRepository, UserRepository userRepository, TicketMapper ticketMapper) {
+    public TicketService(
+            TicketRepository ticketRepository,
+            UserRepository userRepository,
+            TicketMapper ticketMapper,
+            SlaDeadlineCalculator slaDeadlineCalculator
+    ) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.ticketMapper = ticketMapper;
+        this.slaDeadlineCalculator = slaDeadlineCalculator;
     }
 
     @Transactional
@@ -67,6 +76,9 @@ public class TicketService {
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setPriority(request.priority());
         ticket.setCategory(request.category());
+        OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
+        ticket.setCreatedAt(createdAt);
+        ticket.setSlaDueAt(slaDeadlineCalculator.calculateDueAt(createdAt, request.priority()));
 
         return ticketMapper.toResponse(ticketRepository.save(ticket));
     }

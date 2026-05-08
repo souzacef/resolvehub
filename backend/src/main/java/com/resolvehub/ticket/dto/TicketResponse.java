@@ -16,6 +16,7 @@ public record TicketResponse(
         TicketStatus status,
         TicketPriority priority,
         TicketCategory category,
+        OffsetDateTime slaDueAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
