@@ -250,7 +250,13 @@ public class TicketService {
         Ticket ticket = ticketRepository.findByIdAndOrganizationId(ticketId, principal.getOrganizationId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
 
-        return ticketAiClassifier.classify(ticket);
+        try {
+            return ticketAiClassifier.classify(ticket);
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI classification provider failed", ex);
+        }
     }
 
     private void assignAsAgent(

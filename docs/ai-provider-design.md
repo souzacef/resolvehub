@@ -2,71 +2,99 @@
 
 ## Goal
 
-ResolveHub exposes AI-assisted ticket classification through a provider-agnostic abstraction so ticket workflows remain independent from any specific model vendor.
+ResolveHub uses provider-agnostic AI classification so ticket workflows stay stable while AI providers can be swapped by configuration.
 
-For v1.0.0, the backend uses a deterministic fake provider. Real Ollama/OpenAI-compatible providers will be added later without changing ticket business logic.
+AI classification is explicit and on-demand through:
+
+- `POST /api/tickets/{ticketId}/ai/classification`
+
+Ticket creation does not call AI and must continue working even if an AI provider is unavailable.
 
 ## Current Abstraction
 
 ### `TicketAiClassifier`
 
-`TicketAiClassifier` is the provider interface used by the ticket layer:
+Provider interface used by the ticket service.
 
-- Input: a ticket (title and description context)
-- Output: `TicketClassificationSuggestion`
+Input:
 
-### `TicketClassificationSuggestion`
+- ticket title
+- ticket description
 
-The suggestion object returns:
+Output:
 
-- `suggestedCategory` (`TicketCategory`)
-- `suggestedPriority` (`TicketPriority`)
-- `reasoning` (short explanation)
+- `TicketClassificationSuggestion`
+  - `suggestedCategory`
+  - `suggestedPriority`
+  - `reasoning`
 
-### `FakeTicketAiClassifier`
+### Implementations
 
-`FakeTicketAiClassifier` is the default implementation in development and tests.
-
-Behavior:
-
-- deterministic keyword-based classification
+1. `FakeTicketAiClassifier`
+- deterministic keyword rules
 - no network calls
-- stable outputs for repeatable tests
+- default in dev/test unless provider is overridden
 
-Default provider selection:
+2. `OpenAiCompatibleTicketAiClassifier`
+- HTTP-based implementation for OpenAI-compatible APIs
+- calls `POST {baseUrl}/chat/completions`
+- prompts for strict JSON with `category`, `priority`, `reasoning`
+- validates category/priority against ResolveHub enums
+- returns controlled `502 Bad Gateway` style error when provider response is invalid or request fails
 
-- `resolvehub.ai.provider=fake`
-- configurable via `RESOLVEHUB_AI_PROVIDER`
+## Configuration
 
-## API Contract
+```yaml
+resolvehub:
+  ai:
+    provider: fake # fake | openai-compatible
+    openai-compatible:
+      base-url: http://127.0.0.1:11434/v1
+      api-key: ollama
+      model: llama3.1:8b
+      timeout-seconds: 20
+```
 
-Endpoint:
+Environment variable equivalents used by `application.yml`:
 
-- `POST /api/tickets/{ticketId}/ai/classification`
+- `RESOLVEHUB_AI_PROVIDER`
+- `RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL`
+- `RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY`
+- `RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL`
+- `RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS`
 
-Behavior:
+## Local Ollama Example
 
-- Returns a suggestion payload only.
-- Does not modify stored ticket category or priority.
-- Keeps AI logic separate from ticket creation and lifecycle updates.
+1. Start Ollama:
 
-## Authorization Rules
+```bash
+ollama serve
+```
 
-- CUSTOMER cannot request AI classification.
-- AGENT, MANAGER, and ADMIN can request classification for tickets in their organization.
-- Cross-organization access is denied.
+2. Pull the model:
 
-## Failure Isolation
+```bash
+ollama pull llama3.1:8b
+```
 
-- Ticket creation does not depend on AI classification.
-- AI classification is explicitly requested by endpoint call.
-- If a future real provider fails, it should not impact existing ticket creation or core ticket CRUD behavior.
+3. Run backend using OpenAI-compatible provider:
 
-## Future Providers
+```bash
+export RESOLVEHUB_AI_PROVIDER=openai-compatible
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL=http://127.0.0.1:11434/v1
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY=ollama
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL=llama3.1:8b
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS=20
+```
 
-Planned next implementations:
+## Behavior Guarantees
 
-- Ollama provider (local deployment)
-- OpenAI-compatible provider (hosted API)
+- AI suggestions do not automatically update ticket category/priority in v1.0.0.
+- AI endpoint failures are isolated to the AI endpoint response.
+- Core ticket flows remain unaffected.
 
-Both will implement `TicketAiClassifier` and be selected by configuration.
+## Future Direction
+
+- Add richer prompt/versioning strategy.
+- Add response confidence metadata if needed.
+- Add additional OpenAI-compatible and hosted providers later without changing ticket business logic.
