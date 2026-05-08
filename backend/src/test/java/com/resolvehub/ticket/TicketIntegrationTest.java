@@ -17,6 +17,7 @@ import com.resolvehub.ticket.domain.TicketPriority;
 import com.resolvehub.ticket.domain.TicketStatus;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
 import com.resolvehub.ticket.repository.TicketRepository;
+import com.resolvehub.ticketcomment.repository.TicketCommentRepository;
 import com.resolvehub.user.domain.Role;
 import com.resolvehub.user.domain.User;
 import com.resolvehub.user.repository.UserRepository;
@@ -45,6 +46,9 @@ class TicketIntegrationTest {
     private TicketRepository ticketRepository;
 
     @Autowired
+    private TicketCommentRepository ticketCommentRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -58,6 +62,7 @@ class TicketIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        ticketCommentRepository.deleteAll();
         ticketRepository.deleteAll();
         userRepository.deleteAll();
         organizationRepository.deleteAll();

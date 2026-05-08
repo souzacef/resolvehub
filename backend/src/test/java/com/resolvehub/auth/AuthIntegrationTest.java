@@ -9,6 +9,7 @@ import com.resolvehub.auth.dto.LoginRequest;
 import com.resolvehub.auth.dto.RegisterRequest;
 import com.resolvehub.organization.repository.OrganizationRepository;
 import com.resolvehub.ticket.repository.TicketRepository;
+import com.resolvehub.ticketcomment.repository.TicketCommentRepository;
 import com.resolvehub.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class AuthIntegrationTest {
     private TicketRepository ticketRepository;
 
     @Autowired
+    private TicketCommentRepository ticketCommentRepository;
+
+    @Autowired
     private OrganizationRepository organizationRepository;
 
     @Autowired
@@ -45,6 +49,7 @@ class AuthIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        ticketCommentRepository.deleteAll();
         ticketRepository.deleteAll();
         userRepository.deleteAll();
         organizationRepository.deleteAll();
