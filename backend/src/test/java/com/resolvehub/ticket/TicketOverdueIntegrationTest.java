@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.resolvehub.common.security.JwtService;
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
+import com.resolvehub.audit.repository.AuditLogRepository;
 import com.resolvehub.organization.domain.Organization;
 import com.resolvehub.organization.repository.OrganizationRepository;
 import com.resolvehub.ticket.domain.Ticket;
@@ -40,6 +41,9 @@ class TicketOverdueIntegrationTest {
     private TicketCommentRepository ticketCommentRepository;
 
     @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
     private TicketRepository ticketRepository;
 
     @Autowired
@@ -56,6 +60,7 @@ class TicketOverdueIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        auditLogRepository.deleteAll();
         ticketCommentRepository.deleteAll();
         ticketRepository.deleteAll();
         userRepository.deleteAll();

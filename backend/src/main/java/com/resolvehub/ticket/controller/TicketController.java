@@ -1,6 +1,7 @@
 package com.resolvehub.ticket.controller;
 
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
+import com.resolvehub.audit.dto.AuditLogResponse;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
 import com.resolvehub.ticket.dto.TicketResponse;
 import com.resolvehub.ticket.dto.UpdateTicketAssigneeRequest;
@@ -54,6 +55,14 @@ public class TicketController {
             @PathVariable UUID id
     ) {
         return ticketService.getTicketById(principal, id);
+    }
+
+    @GetMapping("/{id}/audit-logs")
+    public List<AuditLogResponse> getTicketAuditLogs(
+            @AuthenticationPrincipal ResolveHubUserPrincipal principal,
+            @PathVariable UUID id
+    ) {
+        return ticketService.getTicketAuditLogs(principal, id);
     }
 
     @PatchMapping("/{id}/status")

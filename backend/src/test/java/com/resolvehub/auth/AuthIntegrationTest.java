@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.resolvehub.audit.repository.AuditLogRepository;
 import com.resolvehub.auth.dto.LoginRequest;
 import com.resolvehub.auth.dto.RegisterRequest;
 import com.resolvehub.organization.repository.OrganizationRepository;
@@ -36,6 +37,9 @@ class AuthIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private AuditLogRepository auditLogRepository;
+
+    @Autowired
     private TicketRepository ticketRepository;
 
     @Autowired
@@ -49,6 +53,7 @@ class AuthIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        auditLogRepository.deleteAll();
         ticketCommentRepository.deleteAll();
         ticketRepository.deleteAll();
         userRepository.deleteAll();

@@ -1,6 +1,7 @@
 package com.resolvehub.ticketcomment.service;
 
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
+import com.resolvehub.audit.service.AuditLogService;
 import com.resolvehub.ticket.domain.Ticket;
 import com.resolvehub.ticket.domain.TicketStatus;
 import com.resolvehub.ticket.repository.TicketRepository;
@@ -26,17 +27,20 @@ public class TicketCommentService {
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
     private final TicketCommentMapper ticketCommentMapper;
+    private final AuditLogService auditLogService;
 
     public TicketCommentService(
             TicketCommentRepository ticketCommentRepository,
             TicketRepository ticketRepository,
             UserRepository userRepository,
-            TicketCommentMapper ticketCommentMapper
+            TicketCommentMapper ticketCommentMapper,
+            AuditLogService auditLogService
     ) {
         this.ticketCommentRepository = ticketCommentRepository;
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.ticketCommentMapper = ticketCommentMapper;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -65,8 +69,9 @@ public class TicketCommentService {
         comment.setAuthor(author);
         comment.setBody(request.body().trim());
         comment.setInternal(internal);
-
-        return ticketCommentMapper.toResponse(ticketCommentRepository.save(comment));
+        TicketComment savedComment = ticketCommentRepository.save(comment);
+        auditLogService.logCommentAdded(principal, ticket, internal);
+        return ticketCommentMapper.toResponse(savedComment);
     }
 
     @Transactional(readOnly = true)

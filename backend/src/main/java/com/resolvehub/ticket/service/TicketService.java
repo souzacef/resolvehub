@@ -1,6 +1,8 @@
 package com.resolvehub.ticket.service;
 
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
+import com.resolvehub.audit.dto.AuditLogResponse;
+import com.resolvehub.audit.service.AuditLogService;
 import com.resolvehub.ticket.domain.Ticket;
 import com.resolvehub.ticket.domain.TicketStatus;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
@@ -45,17 +47,20 @@ public class TicketService {
     private final UserRepository userRepository;
     private final TicketMapper ticketMapper;
     private final SlaDeadlineCalculator slaDeadlineCalculator;
+    private final AuditLogService auditLogService;
 
     public TicketService(
             TicketRepository ticketRepository,
             UserRepository userRepository,
             TicketMapper ticketMapper,
-            SlaDeadlineCalculator slaDeadlineCalculator
+            SlaDeadlineCalculator slaDeadlineCalculator,
+            AuditLogService auditLogService
     ) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.ticketMapper = ticketMapper;
         this.slaDeadlineCalculator = slaDeadlineCalculator;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -80,8 +85,9 @@ public class TicketService {
         OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
         ticket.setCreatedAt(createdAt);
         ticket.setSlaDueAt(slaDeadlineCalculator.calculateDueAt(createdAt, request.priority()));
-
-        return ticketMapper.toResponse(ticketRepository.save(ticket));
+        Ticket savedTicket = ticketRepository.save(ticket);
+        auditLogService.logTicketCreated(principal, savedTicket);
+        return ticketMapper.toResponse(savedTicket);
     }
 
     @Transactional(readOnly = true)
@@ -168,7 +174,9 @@ public class TicketService {
         validateRolePermissionForStatusChange(principal, ticket, currentStatus, targetStatus);
 
         ticket.setStatus(targetStatus);
-        return ticketMapper.toResponse(ticketRepository.save(ticket));
+        Ticket savedTicket = ticketRepository.save(ticket);
+        auditLogService.logTicketStatusChanged(principal, savedTicket, currentStatus.name(), targetStatus.name());
+        return ticketMapper.toResponse(savedTicket);
     }
 
     @Transactional
@@ -196,15 +204,30 @@ public class TicketService {
 
         if (role == Role.AGENT) {
             assignAsAgent(principal, ticket, request);
-            return ticketMapper.toResponse(ticketRepository.save(ticket));
+            Ticket savedTicket = ticketRepository.save(ticket);
+            auditLogService.logTicketAssigned(principal, savedTicket, request.assigneeId());
+            return ticketMapper.toResponse(savedTicket);
         }
 
         if (role == Role.MANAGER || role == Role.ADMIN) {
+            UUID previousAssigneeId = ticket.getAssignee() == null ? null : ticket.getAssignee().getId();
             assignAsManagerOrAdmin(principal, ticket, request);
-            return ticketMapper.toResponse(ticketRepository.save(ticket));
+            Ticket savedTicket = ticketRepository.save(ticket);
+
+            if (request.assigneeId() == null) {
+                auditLogService.logTicketUnassigned(principal, savedTicket, previousAssigneeId);
+            } else {
+                auditLogService.logTicketAssigned(principal, savedTicket, request.assigneeId());
+            }
+            return ticketMapper.toResponse(savedTicket);
         }
 
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed to assign tickets");
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuditLogResponse> getTicketAuditLogs(ResolveHubUserPrincipal principal, UUID ticketId) {
+        return auditLogService.getTicketAuditLogs(principal, ticketId);
     }
 
     private void assignAsAgent(
