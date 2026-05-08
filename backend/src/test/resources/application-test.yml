@@ -15,3 +15,5 @@ resolvehub:
     jwt:
       secret: test-secret-key-for-jwt-signing-with-minimum-length
       expiration-seconds: 3600
+  ai:
+    provider: fake

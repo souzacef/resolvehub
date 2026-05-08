@@ -2,197 +2,71 @@
 
 ## Goal
 
-ResolveHub uses AI to assist support teams with ticket classification. The AI layer should be useful, replaceable, testable, and safe.
+ResolveHub exposes AI-assisted ticket classification through a provider-agnostic abstraction so ticket workflows remain independent from any specific model vendor.
 
-The first provider target is local Ollama using an OpenAI-compatible API. The design should allow adding OpenAI or another hosted provider later without rewriting ticket business logic.
+For v1.0.0, the backend uses a deterministic fake provider. Real Ollama/OpenAI-compatible providers will be added later without changing ticket business logic.
 
-## Design principles
+## Current Abstraction
 
-- The domain should not depend directly on a specific AI vendor.
-- Ticket creation must not fail just because AI classification fails.
-- AI suggestions are advisory by default.
-- Tests should not require a real model.
-- Provider prompts should be versioned or centralized.
-- Sensitive data handling should be explicit.
+### `TicketAiClassifier`
 
-## Provider abstraction
+`TicketAiClassifier` is the provider interface used by the ticket layer:
 
-Suggested interface:
+- Input: a ticket (title and description context)
+- Output: `TicketClassificationSuggestion`
 
-```java
-public interface AiClassificationProvider {
-    TicketClassificationSuggestion classify(TicketClassificationRequest request);
-}
-```
+### `TicketClassificationSuggestion`
 
-Suggested request object:
+The suggestion object returns:
 
-```java
-public record TicketClassificationRequest(
-    String title,
-    String description,
-    List<String> allowedCategories,
-    List<String> allowedPriorities
-) {}
-```
+- `suggestedCategory` (`TicketCategory`)
+- `suggestedPriority` (`TicketPriority`)
+- `reasoning` (short explanation)
 
-Suggested response object:
+### `FakeTicketAiClassifier`
 
-```java
-public record TicketClassificationSuggestion(
-    TicketCategory category,
-    TicketPriority priority,
-    BigDecimal confidence,
-    String explanation,
-    String provider,
-    String model
-) {}
-```
-
-## Providers
-
-### FakeAiClassificationProvider
-
-Used for tests and local deterministic development.
+`FakeTicketAiClassifier` is the default implementation in development and tests.
 
 Behavior:
 
-- Returns predictable category and priority.
-- Does not call external services.
-- Enables integration tests without requiring Ollama or OpenAI.
+- deterministic keyword-based classification
+- no network calls
+- stable outputs for repeatable tests
 
-### OllamaAiClassificationProvider
+Default provider selection:
 
-Used for local AI-assisted classification.
+- `resolvehub.ai.provider=fake`
+- configurable via `RESOLVEHUB_AI_PROVIDER`
 
-Default configuration:
+## API Contract
 
-```text
-RESOLVEHUB_AI_PROVIDER=ollama
-RESOLVEHUB_AI_BASE_URL=http://localhost:11434/v1
-RESOLVEHUB_AI_MODEL=qwen2.5:7b
-```
+Endpoint:
 
-In Docker Compose, the backend should use:
+- `POST /api/tickets/{ticketId}/ai/classification`
 
-```text
-RESOLVEHUB_AI_BASE_URL=http://ollama:11434/v1
-```
+Behavior:
 
-### OpenAiClassificationProvider
+- Returns a suggestion payload only.
+- Does not modify stored ticket category or priority.
+- Keeps AI logic separate from ticket creation and lifecycle updates.
 
-Future provider.
+## Authorization Rules
 
-Expected configuration:
+- CUSTOMER cannot request AI classification.
+- AGENT, MANAGER, and ADMIN can request classification for tickets in their organization.
+- Cross-organization access is denied.
 
-```text
-RESOLVEHUB_AI_PROVIDER=openai
-RESOLVEHUB_AI_BASE_URL=https://api.openai.com/v1
-RESOLVEHUB_AI_MODEL=<model-name>
-OPENAI_API_KEY=<secret>
-```
+## Failure Isolation
 
-This provider should not be required for the MVP.
+- Ticket creation does not depend on AI classification.
+- AI classification is explicitly requested by endpoint call.
+- If a future real provider fails, it should not impact existing ticket creation or core ticket CRUD behavior.
 
-## Prompt design
+## Future Providers
 
-The classification prompt should instruct the model to return strict JSON only.
+Planned next implementations:
 
-Input:
+- Ollama provider (local deployment)
+- OpenAI-compatible provider (hosted API)
 
-- Ticket title
-- Ticket description
-- Allowed categories
-- Allowed priorities
-
-Expected JSON:
-
-```json
-{
-  "category": "TECHNICAL",
-  "priority": "HIGH",
-  "confidence": 0.82,
-  "explanation": "The user reports a production login failure affecting access."
-}
-```
-
-The backend must validate the returned category and priority against enum values. Invalid AI output should be handled gracefully.
-
-## Failure handling
-
-AI classification may fail because of:
-
-- Provider unavailable
-- Timeout
-- Invalid JSON
-- Unsupported model
-- Empty response
-- Provider rate limit
-- Unexpected response format
-
-The service should:
-
-1. Log the failure.
-2. Save the ticket normally.
-3. Optionally record an AI classification failure event.
-4. Return the ticket without AI classification.
-
-Ticket creation must not depend on successful AI output.
-
-## Human approval model
-
-For v1.0.0:
-
-- AI suggests category and priority.
-- Human users can accept or ignore suggestions.
-- Accepted suggestions should be auditable.
-
-Future versions may allow organization-level automation settings, but automatic classification should be explicit and configurable.
-
-## Security and privacy
-
-The AI provider receives ticket title and description. That may include sensitive customer information.
-
-Rules:
-
-- Do not send passwords, tokens, or secrets to AI providers.
-- Consider redaction before provider calls in later versions.
-- Document which provider is active.
-- Keep API keys out of Git.
-- Keep AI requests scoped to the current ticket only.
-
-## Testing strategy for AI
-
-Unit tests:
-
-- Fake provider returns deterministic results.
-- AI service handles provider exceptions.
-- AI service validates enum output.
-- Ticket creation succeeds when AI fails.
-
-Integration tests:
-
-- Ticket creation stores AI suggestion when fake provider succeeds.
-- Ticket creation still works when fake provider simulates failure.
-
-Manual tests:
-
-- Run Ollama locally.
-- Pull a supported model.
-- Create a ticket.
-- Verify classification suggestion is stored.
-
-Example Ollama setup:
-
-```bash
-ollama pull qwen2.5:7b
-ollama serve
-```
-
-Then configure backend:
-
-```bash
-export RESOLVEHUB_AI_PROVIDER=ollama
-export RESOLVEHUB_AI_BASE_URL=http://localhost:11434/v1
-export RESOLVEHUB_AI_MODEL=qwen2.5:7b
-```
+Both will implement `TicketAiClassifier` and be selected by configuration.

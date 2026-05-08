@@ -35,3 +35,5 @@ resolvehub:
       # Plain text UTF-8 secret for HS256. Use at least 32 characters.
       secret: ${JWT_SECRET:resolvehub-dev-secret-key-change-this-in-production-2026}
       expiration-seconds: ${JWT_EXPIRATION_SECONDS:3600}
+  ai:
+    provider: ${RESOLVEHUB_AI_PROVIDER:fake}

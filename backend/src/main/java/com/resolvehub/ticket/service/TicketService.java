@@ -1,5 +1,7 @@
 package com.resolvehub.ticket.service;
 
+import com.resolvehub.ai.dto.TicketClassificationSuggestion;
+import com.resolvehub.ai.service.TicketAiClassifier;
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
 import com.resolvehub.audit.dto.AuditLogResponse;
 import com.resolvehub.audit.service.AuditLogService;
@@ -48,19 +50,22 @@ public class TicketService {
     private final TicketMapper ticketMapper;
     private final SlaDeadlineCalculator slaDeadlineCalculator;
     private final AuditLogService auditLogService;
+    private final TicketAiClassifier ticketAiClassifier;
 
     public TicketService(
             TicketRepository ticketRepository,
             UserRepository userRepository,
             TicketMapper ticketMapper,
             SlaDeadlineCalculator slaDeadlineCalculator,
-            AuditLogService auditLogService
+            AuditLogService auditLogService,
+            TicketAiClassifier ticketAiClassifier
     ) {
         this.ticketRepository = ticketRepository;
         this.userRepository = userRepository;
         this.ticketMapper = ticketMapper;
         this.slaDeadlineCalculator = slaDeadlineCalculator;
         this.auditLogService = auditLogService;
+        this.ticketAiClassifier = ticketAiClassifier;
     }
 
     @Transactional
@@ -228,6 +233,24 @@ public class TicketService {
     @Transactional(readOnly = true)
     public List<AuditLogResponse> getTicketAuditLogs(ResolveHubUserPrincipal principal, UUID ticketId) {
         return auditLogService.getTicketAuditLogs(principal, ticketId);
+    }
+
+    @Transactional(readOnly = true)
+    public TicketClassificationSuggestion requestTicketClassification(ResolveHubUserPrincipal principal, UUID ticketId) {
+        requirePrincipal(principal);
+
+        Role role = principal.getRole();
+        if (role == Role.CUSTOMER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Customers cannot request AI classification");
+        }
+        if (role != Role.AGENT && role != Role.MANAGER && role != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed to request AI classification");
+        }
+
+        Ticket ticket = ticketRepository.findByIdAndOrganizationId(ticketId, principal.getOrganizationId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        return ticketAiClassifier.classify(ticket);
     }
 
     private void assignAsAgent(

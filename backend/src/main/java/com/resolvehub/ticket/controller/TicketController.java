@@ -1,5 +1,6 @@
 package com.resolvehub.ticket.controller;
 
+import com.resolvehub.ai.dto.TicketClassificationSuggestion;
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
 import com.resolvehub.audit.dto.AuditLogResponse;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
@@ -63,6 +64,14 @@ public class TicketController {
             @PathVariable UUID id
     ) {
         return ticketService.getTicketAuditLogs(principal, id);
+    }
+
+    @PostMapping("/{id}/ai/classification")
+    public TicketClassificationSuggestion requestTicketClassification(
+            @AuthenticationPrincipal ResolveHubUserPrincipal principal,
+            @PathVariable UUID id
+    ) {
+        return ticketService.requestTicketClassification(principal, id);
     }
 
     @PatchMapping("/{id}/status")
