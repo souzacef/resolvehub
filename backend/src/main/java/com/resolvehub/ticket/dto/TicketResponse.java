@@ -10,6 +10,7 @@ public record TicketResponse(
         UUID id,
         UUID organizationId,
         UUID requesterId,
+        UUID assigneeId,
         String title,
         String description,
         TicketStatus status,

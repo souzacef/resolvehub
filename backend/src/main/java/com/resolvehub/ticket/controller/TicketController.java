@@ -3,6 +3,7 @@ package com.resolvehub.ticket.controller;
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
 import com.resolvehub.ticket.dto.TicketResponse;
+import com.resolvehub.ticket.dto.UpdateTicketAssigneeRequest;
 import com.resolvehub.ticket.dto.UpdateTicketStatusRequest;
 import com.resolvehub.ticket.service.TicketService;
 import jakarta.validation.Valid;
@@ -58,5 +59,14 @@ public class TicketController {
             @Valid @RequestBody UpdateTicketStatusRequest request
     ) {
         return ticketService.updateTicketStatus(principal, id, request);
+    }
+
+    @PatchMapping("/{id}/assignee")
+    public TicketResponse updateTicketAssignee(
+            @AuthenticationPrincipal ResolveHubUserPrincipal principal,
+            @PathVariable UUID id,
+            @RequestBody UpdateTicketAssigneeRequest request
+    ) {
+        return ticketService.updateTicketAssignee(principal, id, request);
     }
 }

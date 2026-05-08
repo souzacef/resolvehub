@@ -11,6 +11,7 @@ public class TicketMapper {
                 ticket.getId(),
                 ticket.getOrganization().getId(),
                 ticket.getRequester().getId(),
+                ticket.getAssignee() == null ? null : ticket.getAssignee().getId(),
                 ticket.getTitle(),
                 ticket.getDescription(),
                 ticket.getStatus(),

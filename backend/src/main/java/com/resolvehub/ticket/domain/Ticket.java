@@ -32,6 +32,10 @@ public class Ticket {
     @JoinColumn(name = "requester_id", nullable = false)
     private User requester;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignee_id")
+    private User assignee;
+
     @Column(nullable = false, length = 200)
     private String title;
 
@@ -74,6 +78,14 @@ public class Ticket {
 
     public void setRequester(User requester) {
         this.requester = requester;
+    }
+
+    public User getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(User assignee) {
+        this.assignee = assignee;
     }
 
     public String getTitle() {

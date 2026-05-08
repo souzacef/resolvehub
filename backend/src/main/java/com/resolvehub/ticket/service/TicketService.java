@@ -6,6 +6,7 @@ import com.resolvehub.ticket.domain.TicketStatus;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
 import com.resolvehub.ticket.dto.TicketMapper;
 import com.resolvehub.ticket.dto.TicketResponse;
+import com.resolvehub.ticket.dto.UpdateTicketAssigneeRequest;
 import com.resolvehub.ticket.dto.UpdateTicketStatusRequest;
 import com.resolvehub.ticket.repository.TicketRepository;
 import com.resolvehub.user.domain.Role;
@@ -136,6 +137,91 @@ public class TicketService {
 
         ticket.setStatus(targetStatus);
         return ticketMapper.toResponse(ticketRepository.save(ticket));
+    }
+
+    @Transactional
+    public TicketResponse updateTicketAssignee(
+            ResolveHubUserPrincipal principal,
+            UUID ticketId,
+            UpdateTicketAssigneeRequest request
+    ) {
+        requirePrincipal(principal);
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        Ticket ticket = ticketRepository.findByIdAndOrganizationId(ticketId, principal.getOrganizationId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        if (ticket.getStatus() == TicketStatus.CLOSED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Closed tickets cannot be assigned");
+        }
+
+        Role role = principal.getRole();
+        if (role == Role.CUSTOMER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Customers cannot assign tickets");
+        }
+
+        if (role == Role.AGENT) {
+            assignAsAgent(principal, ticket, request);
+            return ticketMapper.toResponse(ticketRepository.save(ticket));
+        }
+
+        if (role == Role.MANAGER || role == Role.ADMIN) {
+            assignAsManagerOrAdmin(principal, ticket, request);
+            return ticketMapper.toResponse(ticketRepository.save(ticket));
+        }
+
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed to assign tickets");
+    }
+
+    private void assignAsAgent(
+            ResolveHubUserPrincipal principal,
+            Ticket ticket,
+            UpdateTicketAssigneeRequest request
+    ) {
+        UUID assigneeId = request.assigneeId();
+
+        if (assigneeId == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Agents cannot unassign tickets");
+        }
+
+        if (ticket.getAssignee() != null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Agents can only assign unassigned tickets");
+        }
+
+        if (!principal.getUserId().equals(assigneeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Agents can only assign tickets to themselves");
+        }
+
+        User assignee = findAssignableUser(principal.getOrganizationId(), assigneeId);
+        ticket.setAssignee(assignee);
+    }
+
+    private void assignAsManagerOrAdmin(
+            ResolveHubUserPrincipal principal,
+            Ticket ticket,
+            UpdateTicketAssigneeRequest request
+    ) {
+        UUID assigneeId = request.assigneeId();
+        if (assigneeId == null) {
+            ticket.setAssignee(null);
+            return;
+        }
+
+        User assignee = findAssignableUser(principal.getOrganizationId(), assigneeId);
+        ticket.setAssignee(assignee);
+    }
+
+    private User findAssignableUser(UUID organizationId, UUID assigneeId) {
+        User assignee = userRepository.findByIdAndOrganizationId(assigneeId, organizationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignee not found in organization"));
+
+        if (assignee.getRole() == Role.CUSTOMER) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Customers cannot be assigned to tickets");
+        }
+
+        return assignee;
     }
 
     private void validateTransition(TicketStatus currentStatus, TicketStatus targetStatus) {
