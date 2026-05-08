@@ -3,6 +3,7 @@ package com.resolvehub.ticket.controller;
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
 import com.resolvehub.ticket.dto.TicketResponse;
+import com.resolvehub.ticket.dto.UpdateTicketStatusRequest;
 import com.resolvehub.ticket.service.TicketService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,5 +49,14 @@ public class TicketController {
             @PathVariable UUID id
     ) {
         return ticketService.getTicketById(principal, id);
+    }
+
+    @PatchMapping("/{id}/status")
+    public TicketResponse updateTicketStatus(
+            @AuthenticationPrincipal ResolveHubUserPrincipal principal,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateTicketStatusRequest request
+    ) {
+        return ticketService.updateTicketStatus(principal, id, request);
     }
 }

@@ -6,11 +6,15 @@ import com.resolvehub.ticket.domain.TicketStatus;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
 import com.resolvehub.ticket.dto.TicketMapper;
 import com.resolvehub.ticket.dto.TicketResponse;
+import com.resolvehub.ticket.dto.UpdateTicketStatusRequest;
 import com.resolvehub.ticket.repository.TicketRepository;
 import com.resolvehub.user.domain.Role;
 import com.resolvehub.user.domain.User;
 import com.resolvehub.user.repository.UserRepository;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,6 +23,19 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class TicketService {
+
+    private static final Map<TicketStatus, Set<TicketStatus>> ALLOWED_TRANSITIONS = Map.of(
+            TicketStatus.OPEN, EnumSet.of(TicketStatus.IN_PROGRESS, TicketStatus.CLOSED),
+            TicketStatus.IN_PROGRESS, EnumSet.of(TicketStatus.WAITING_CUSTOMER, TicketStatus.RESOLVED, TicketStatus.CLOSED),
+            TicketStatus.WAITING_CUSTOMER, EnumSet.of(TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED),
+            TicketStatus.RESOLVED, EnumSet.of(TicketStatus.CLOSED, TicketStatus.IN_PROGRESS),
+            TicketStatus.CLOSED, EnumSet.noneOf(TicketStatus.class)
+    );
+
+    private static final Map<TicketStatus, Set<TicketStatus>> CUSTOMER_ALLOWED_TRANSITIONS = Map.of(
+            TicketStatus.OPEN, EnumSet.of(TicketStatus.CLOSED),
+            TicketStatus.RESOLVED, EnumSet.of(TicketStatus.IN_PROGRESS)
+    );
 
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
@@ -98,6 +115,68 @@ public class TicketService {
         }
 
         return ticketMapper.toResponse(ticket);
+    }
+
+    @Transactional
+    public TicketResponse updateTicketStatus(
+            ResolveHubUserPrincipal principal,
+            UUID ticketId,
+            UpdateTicketStatusRequest request
+    ) {
+        requirePrincipal(principal);
+
+        Ticket ticket = ticketRepository.findByIdAndOrganizationId(ticketId, principal.getOrganizationId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        TicketStatus currentStatus = ticket.getStatus();
+        TicketStatus targetStatus = request.status();
+
+        validateTransition(currentStatus, targetStatus);
+        validateRolePermissionForStatusChange(principal, ticket, currentStatus, targetStatus);
+
+        ticket.setStatus(targetStatus);
+        return ticketMapper.toResponse(ticketRepository.save(ticket));
+    }
+
+    private void validateTransition(TicketStatus currentStatus, TicketStatus targetStatus) {
+        Set<TicketStatus> nextStatuses = ALLOWED_TRANSITIONS.getOrDefault(currentStatus, Set.of());
+
+        if (!nextStatuses.contains(targetStatus)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid status transition from " + currentStatus + " to " + targetStatus
+            );
+        }
+    }
+
+    private void validateRolePermissionForStatusChange(
+            ResolveHubUserPrincipal principal,
+            Ticket ticket,
+            TicketStatus currentStatus,
+            TicketStatus targetStatus
+    ) {
+        Role role = principal.getRole();
+
+        if (role == Role.CUSTOMER) {
+            if (!ticket.getRequester().getId().equals(principal.getUserId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Customers can only update their own tickets");
+            }
+
+            Set<TicketStatus> customerTargets = CUSTOMER_ALLOWED_TRANSITIONS.getOrDefault(currentStatus, Set.of());
+            if (!customerTargets.contains(targetStatus)) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Customers are not allowed to change ticket status from " + currentStatus + " to " + targetStatus
+                );
+            }
+            return;
+        }
+
+        if (role == Role.AGENT || role == Role.MANAGER || role == Role.ADMIN) {
+            return;
+        }
+
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed to update ticket status");
     }
 
     private void requirePrincipal(ResolveHubUserPrincipal principal) {
