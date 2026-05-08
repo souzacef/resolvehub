@@ -39,6 +39,7 @@ public class TicketService {
             TicketStatus.OPEN, EnumSet.of(TicketStatus.CLOSED),
             TicketStatus.RESOLVED, EnumSet.of(TicketStatus.IN_PROGRESS)
     );
+    private static final Set<TicketStatus> NON_OVERDUE_STATUSES = EnumSet.of(TicketStatus.RESOLVED, TicketStatus.CLOSED);
 
     private final TicketRepository ticketRepository;
     private final UserRepository userRepository;
@@ -84,19 +85,38 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> listTickets(ResolveHubUserPrincipal principal) {
+    public List<TicketResponse> listTickets(ResolveHubUserPrincipal principal, Boolean overdue) {
         requirePrincipal(principal);
+        boolean overdueOnly = Boolean.TRUE.equals(overdue);
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
 
         List<Ticket> tickets;
         if (principal.getRole() == Role.CUSTOMER) {
-            tickets = ticketRepository.findByOrganizationIdAndRequesterIdOrderByCreatedAtDesc(
-                    principal.getOrganizationId(),
-                    principal.getUserId()
-            );
+            if (overdueOnly) {
+                tickets = ticketRepository.findByOrganizationIdAndRequesterIdAndStatusNotInAndSlaDueAtBeforeOrderByCreatedAtDesc(
+                        principal.getOrganizationId(),
+                        principal.getUserId(),
+                        NON_OVERDUE_STATUSES,
+                        now
+                );
+            } else {
+                tickets = ticketRepository.findByOrganizationIdAndRequesterIdOrderByCreatedAtDesc(
+                        principal.getOrganizationId(),
+                        principal.getUserId()
+                );
+            }
         } else if (principal.getRole() == Role.AGENT
                 || principal.getRole() == Role.MANAGER
                 || principal.getRole() == Role.ADMIN) {
-            tickets = ticketRepository.findByOrganizationIdOrderByCreatedAtDesc(principal.getOrganizationId());
+            if (overdueOnly) {
+                tickets = ticketRepository.findByOrganizationIdAndStatusNotInAndSlaDueAtBeforeOrderByCreatedAtDesc(
+                        principal.getOrganizationId(),
+                        NON_OVERDUE_STATUSES,
+                        now
+                );
+            } else {
+                tickets = ticketRepository.findByOrganizationIdOrderByCreatedAtDesc(principal.getOrganizationId());
+            }
         } else {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed to list tickets");
         }
