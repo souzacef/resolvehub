@@ -4,6 +4,7 @@ export type TicketStats = {
   total: number;
   open: number;
   overdue: number;
+  highUrgent: number;
 };
 
 export function computeTicketStats(tickets: TicketResponse[]): TicketStats {
@@ -11,10 +12,14 @@ export function computeTicketStats(tickets: TicketResponse[]): TicketStats {
   const open = tickets.filter(
     (ticket) => ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED',
   ).length;
+  const highUrgent = tickets.filter(
+    (ticket) => ticket.priority === 'HIGH' || ticket.priority === 'URGENT',
+  ).length;
 
   return {
     total: tickets.length,
     open,
     overdue,
+    highUrgent,
   };
 }

@@ -35,16 +35,32 @@ export function TicketsPage() {
     };
   }, []);
 
+  function formatAssignee(assigneeId: string | null) {
+    if (!assigneeId) {
+      return 'Unassigned';
+    }
+    return `${assigneeId.slice(0, 8)}...`;
+  }
+
   return (
     <section>
       <header className="page-header">
         <h1>Tickets</h1>
       </header>
 
-      {isLoading ? <p>Loading tickets...</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
+      {isLoading ? <p className="state-panel">Loading tickets...</p> : null}
+      {error ? (
+        <p className="state-panel state-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {!isLoading && !error && tickets.length === 0 ? (
+        <p className="state-panel muted-text">
+          No tickets were returned by the API.
+        </p>
+      ) : null}
 
-      {!isLoading && !error ? (
+      {!isLoading && !error && tickets.length > 0 ? (
         <div className="table-wrapper">
           <table>
             <thead>
@@ -53,6 +69,7 @@ export function TicketsPage() {
                 <th>Status</th>
                 <th>Priority</th>
                 <th>Category</th>
+                <th>Assignee</th>
                 <th>SLA due</th>
                 <th>Overdue</th>
               </tr>
@@ -66,8 +83,17 @@ export function TicketsPage() {
                   <td>{ticket.status}</td>
                   <td>{ticket.priority}</td>
                   <td>{ticket.category}</td>
+                  <td>{formatAssignee(ticket.assigneeId)}</td>
                   <td>{new Date(ticket.slaDueAt).toLocaleString()}</td>
-                  <td>{ticket.overdue ? 'Yes' : 'No'}</td>
+                  <td>
+                    <span
+                      className={
+                        ticket.overdue ? 'pill pill-danger' : 'pill pill-success'
+                      }
+                    >
+                      {ticket.overdue ? 'Overdue' : 'On track'}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

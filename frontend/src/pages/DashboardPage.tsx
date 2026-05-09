@@ -49,8 +49,18 @@ export function DashboardPage() {
         </Link>
       </header>
 
-      {isLoading ? <p>Loading dashboard...</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
+      {isLoading ? <p className="state-panel">Loading dashboard...</p> : null}
+      {error ? (
+        <p className="state-panel state-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {!isLoading && !error && tickets.length === 0 ? (
+        <p className="state-panel muted-text">
+          No tickets yet. Once tickets are created, summary metrics will appear
+          here.
+        </p>
+      ) : null}
 
       <div className="stats-grid">
         <article className="stat-card">
@@ -64,6 +74,10 @@ export function DashboardPage() {
         <article className="stat-card">
           <h2>Overdue tickets</h2>
           <strong>{stats.overdue}</strong>
+        </article>
+        <article className="stat-card">
+          <h2>High/Urgent priority</h2>
+          <strong>{stats.highUrgent}</strong>
         </article>
       </div>
     </section>

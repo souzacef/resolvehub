@@ -185,7 +185,7 @@ button:disabled {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -218,6 +218,20 @@ button:disabled {
   background: var(--panel);
 }
 
+.state-panel {
+  margin: 0.5rem 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  background: var(--panel);
+}
+
+.state-error {
+  border-color: #f1c7c2;
+  background: #fff4f2;
+  color: var(--danger);
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -236,6 +250,24 @@ th {
   color: #2e4b3f;
   font-size: 0.85rem;
   letter-spacing: 0.02em;
+}
+
+.pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pill-success {
+  background: #e6f7ee;
+  color: #0c6f47;
+}
+
+.pill-danger {
+  background: #fde8e6;
+  color: #a81b12;
 }
 
 @media (max-width: 900px) {
