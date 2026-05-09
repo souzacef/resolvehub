@@ -95,6 +95,23 @@ Start application containers when backend/frontend Dockerfiles are available:
 docker compose --profile app up --build
 ```
 
+## Frontend local run
+
+The frontend lives in `/frontend` and expects the backend at `http://localhost:8080` by default.
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Build check:
+
+```bash
+npm run build
+```
+
 ## Development standards
 
 - Keep changes small and reviewable.

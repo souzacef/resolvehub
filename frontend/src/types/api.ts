@@ -1,0 +1,43 @@
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
+export type AuthResponse = {
+  accessToken: string;
+  tokenType: string;
+  expiresInSeconds: number;
+};
+
+export type TicketStatus =
+  | 'OPEN'
+  | 'IN_PROGRESS'
+  | 'WAITING_CUSTOMER'
+  | 'RESOLVED'
+  | 'CLOSED';
+
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export type TicketCategory =
+  | 'BILLING'
+  | 'TECHNICAL'
+  | 'ACCOUNT'
+  | 'FEATURE_REQUEST'
+  | 'SECURITY'
+  | 'OTHER';
+
+export type TicketResponse = {
+  id: string;
+  organizationId: string;
+  requesterId: string;
+  assigneeId: string | null;
+  title: string;
+  description: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  category: TicketCategory;
+  slaDueAt: string;
+  overdue: boolean;
+  createdAt: string;
+  updatedAt: string;
+};

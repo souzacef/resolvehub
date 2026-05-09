@@ -1,0 +1,254 @@
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root {
+  --bg: #f3f6f4;
+  --panel: #ffffff;
+  --panel-soft: #eef4f0;
+  --text: #112015;
+  --muted: #597266;
+  --border: #d6e4dc;
+  --accent: #0f7b53;
+  --accent-strong: #0a613f;
+  --danger: #b42318;
+  --shadow: 0 10px 28px rgba(27, 62, 47, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Public Sans', 'Helvetica Neue', sans-serif;
+  background: radial-gradient(circle at top right, #dbece3 0%, var(--bg) 46%),
+    linear-gradient(165deg, #eff6f2 0%, #f8fbf9 100%);
+  color: var(--text);
+}
+
+a {
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 430px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.login-card h1 {
+  margin: 0 0 0.5rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2rem;
+}
+
+.login-card p {
+  margin: 0 0 1.4rem;
+  color: var(--muted);
+}
+
+label {
+  display: block;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  background: #fbfdfc;
+  font: inherit;
+}
+
+button {
+  margin-top: 1.2rem;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 0.8rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-family: 'Space Grotesk', sans-serif;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.error-text {
+  color: var(--danger);
+  margin-top: 0.75rem;
+}
+
+.muted-text {
+  color: var(--muted);
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 250px 1fr;
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, #f6fbf8 0%, #edf7f1 100%);
+  padding: 1.6rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.brand {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0.5rem;
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.nav-links a {
+  border-radius: 10px;
+  padding: 0.72rem 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.nav-links a.active {
+  background: var(--panel);
+  color: var(--accent-strong);
+  box-shadow: 0 0 0 1px var(--border) inset;
+}
+
+.ghost-button {
+  margin-top: auto;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.content-area {
+  padding: 1.8rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.link-button {
+  background: var(--accent);
+  color: white;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+}
+
+.link-button:hover {
+  text-decoration: none;
+  background: var(--accent-strong);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.2rem;
+  box-shadow: var(--shadow);
+}
+
+.stat-card h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.stat-card strong {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 2rem;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.table-wrapper {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  padding: 0.8rem;
+  white-space: nowrap;
+}
+
+th {
+  background: var(--panel-soft);
+  color: #2e4b3f;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
