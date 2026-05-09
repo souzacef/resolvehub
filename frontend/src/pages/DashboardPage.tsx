@@ -44,9 +44,14 @@ export function DashboardPage() {
     <section>
       <header className="page-header">
         <h1>Dashboard</h1>
-        <Link className="link-button" to="/tickets">
-          View tickets
-        </Link>
+        <div className="header-actions">
+          <Link className="link-button link-button-secondary" to="/tickets">
+            View tickets
+          </Link>
+          <Link className="link-button" to="/tickets/new">
+            Create ticket
+          </Link>
+        </div>
       </header>
 
       {isLoading ? <p className="state-panel">Loading dashboard...</p> : null}

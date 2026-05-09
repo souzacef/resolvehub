@@ -41,3 +41,10 @@ export type TicketResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type CreateTicketRequest = {
+  title: string;
+  description: string;
+  priority: TicketPriority;
+  category: TicketCategory;
+};

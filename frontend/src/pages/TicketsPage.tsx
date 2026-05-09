@@ -46,6 +46,11 @@ export function TicketsPage() {
     <section>
       <header className="page-header">
         <h1>Tickets</h1>
+        <div className="header-actions">
+          <Link className="link-button" to="/tickets/new">
+            Create ticket
+          </Link>
+        </div>
       </header>
 
       {isLoading ? <p className="state-panel">Loading tickets...</p> : null}
