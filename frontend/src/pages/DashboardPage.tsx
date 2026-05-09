@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../lib/apiClient';
+import { computeTicketStats } from '../lib/ticketStats';
 import type { TicketResponse } from '../types/api';
 
 export function DashboardPage() {
@@ -36,16 +37,7 @@ export function DashboardPage() {
   }, []);
 
   const stats = useMemo(() => {
-    const overdueCount = tickets.filter((ticket) => ticket.overdue).length;
-    const openCount = tickets.filter(
-      (ticket) => ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED',
-    ).length;
-
-    return {
-      total: tickets.length,
-      open: openCount,
-      overdue: overdueCount,
-    };
+    return computeTicketStats(tickets);
   }, [tickets]);
 
   return (
