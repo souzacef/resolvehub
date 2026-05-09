@@ -82,3 +82,5 @@ When running with `SPRING_PROFILES_ACTIVE=dev` (or `RESOLVEHUB_SEED_DEMO_ENABLED
 - `customer@resolvehub.dev` / `Password123!`
 
 The seed creates one demo organization, sample tickets across statuses/priorities, comments, and assigned work so Swagger can be explored immediately.
+
+If your local database was created before the latest demo-seed consistency fixes and demo users/tickets look split across organizations, reset your local dev database volume and restart the backend so a fresh coherent demo dataset is created.

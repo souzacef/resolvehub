@@ -16,6 +16,7 @@ import com.resolvehub.user.repository.UserRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.Objects;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -149,17 +150,46 @@ public class DevelopmentDemoDataSeeder implements ApplicationRunner {
     }
 
     private User ensureUser(Organization organization, String name, String email, Role role) {
-        return userRepository.findByEmail(email)
-                .orElseGet(() -> {
-                    User user = new User();
-                    user.setOrganization(organization);
-                    user.setName(name);
-                    user.setEmail(email);
-                    user.setPasswordHash(passwordEncoder.encode(DEMO_PASSWORD));
-                    user.setRole(role);
-                    user.setStatus("ACTIVE");
-                    return userRepository.save(user);
-                });
+        User user = userRepository.findByEmail(email).orElseGet(User::new);
+        boolean isNewUser = user.getId() == null;
+        boolean changed = isNewUser;
+
+        if (isNewUser) {
+            user.setEmail(email);
+        }
+
+        if (user.getOrganization() == null
+                || !organization.getId().equals(user.getOrganization().getId())) {
+            user.setOrganization(organization);
+            changed = true;
+        }
+
+        if (!Objects.equals(user.getName(), name)) {
+            user.setName(name);
+            changed = true;
+        }
+
+        if (user.getRole() != role) {
+            user.setRole(role);
+            changed = true;
+        }
+
+        if (!"ACTIVE".equals(user.getStatus())) {
+            user.setStatus("ACTIVE");
+            changed = true;
+        }
+
+        if (user.getPasswordHash() == null
+                || !passwordEncoder.matches(DEMO_PASSWORD, user.getPasswordHash())) {
+            user.setPasswordHash(passwordEncoder.encode(DEMO_PASSWORD));
+            changed = true;
+        }
+
+        if (changed) {
+            return userRepository.save(user);
+        }
+
+        return user;
     }
 
     private Ticket ensureTicket(
@@ -173,21 +203,68 @@ public class DevelopmentDemoDataSeeder implements ApplicationRunner {
             TicketCategory category,
             OffsetDateTime createdAt
     ) {
-        return ticketRepository.findByOrganizationIdAndTitle(organization.getId(), title)
-                .orElseGet(() -> {
-                    Ticket ticket = new Ticket();
-                    ticket.setOrganization(organization);
-                    ticket.setRequester(requester);
-                    ticket.setAssignee(assignee);
-                    ticket.setTitle(title);
-                    ticket.setDescription(description);
-                    ticket.setStatus(status);
-                    ticket.setPriority(priority);
-                    ticket.setCategory(category);
-                    ticket.setCreatedAt(createdAt);
-                    ticket.setSlaDueAt(slaDeadlineCalculator.calculateDueAt(createdAt, priority));
-                    return ticketRepository.save(ticket);
-                });
+        Ticket ticket = ticketRepository.findByOrganizationIdAndTitle(organization.getId(), title)
+                .orElseGet(Ticket::new);
+
+        boolean isNewTicket = ticket.getId() == null;
+        boolean changed = isNewTicket;
+
+        if (isNewTicket) {
+            ticket.setCreatedAt(createdAt);
+            ticket.setTitle(title);
+        }
+
+        if (ticket.getOrganization() == null
+                || !organization.getId().equals(ticket.getOrganization().getId())) {
+            ticket.setOrganization(organization);
+            changed = true;
+        }
+
+        if (ticket.getRequester() == null
+                || !requester.getId().equals(ticket.getRequester().getId())) {
+            ticket.setRequester(requester);
+            changed = true;
+        }
+
+        if (!sameUser(ticket.getAssignee(), assignee)) {
+            ticket.setAssignee(assignee);
+            changed = true;
+        }
+
+        if (!Objects.equals(ticket.getDescription(), description)) {
+            ticket.setDescription(description);
+            changed = true;
+        }
+
+        if (ticket.getStatus() != status) {
+            ticket.setStatus(status);
+            changed = true;
+        }
+
+        if (ticket.getPriority() != priority) {
+            ticket.setPriority(priority);
+            changed = true;
+        }
+
+        if (ticket.getCategory() != category) {
+            ticket.setCategory(category);
+            changed = true;
+        }
+
+        OffsetDateTime expectedDueAt = slaDeadlineCalculator.calculateDueAt(
+                ticket.getCreatedAt() == null ? createdAt : ticket.getCreatedAt(),
+                priority
+        );
+        if (!Objects.equals(ticket.getSlaDueAt(), expectedDueAt)) {
+            ticket.setSlaDueAt(expectedDueAt);
+            changed = true;
+        }
+
+        if (changed) {
+            return ticketRepository.save(ticket);
+        }
+
+        return ticket;
     }
 
     private void ensureComment(Ticket ticket, User author, String body, boolean internal) {
@@ -201,5 +278,15 @@ public class DevelopmentDemoDataSeeder implements ApplicationRunner {
         comment.setBody(body);
         comment.setInternal(internal);
         ticketCommentRepository.save(comment);
+    }
+
+    private boolean sameUser(User left, User right) {
+        if (left == null && right == null) {
+            return true;
+        }
+        if (left == null || right == null) {
+            return false;
+        }
+        return Objects.equals(left.getId(), right.getId());
     }
 }
