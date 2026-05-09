@@ -10,4 +10,6 @@ public interface TicketCommentRepository extends JpaRepository<TicketComment, UU
     List<TicketComment> findByTicketIdOrderByCreatedAtAsc(UUID ticketId);
 
     List<TicketComment> findByTicketIdAndInternalFalseOrderByCreatedAtAsc(UUID ticketId);
+
+    boolean existsByTicketIdAndBody(UUID ticketId, String body);
 }

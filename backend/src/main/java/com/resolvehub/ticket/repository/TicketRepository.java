@@ -31,4 +31,6 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     Optional<Ticket> findByIdAndOrganizationId(UUID id, UUID organizationId);
 
     Optional<Ticket> findByIdAndOrganizationIdAndRequesterId(UUID id, UUID organizationId, UUID requesterId);
+
+    Optional<Ticket> findByOrganizationIdAndTitle(UUID organizationId, String title);
 }
