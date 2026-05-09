@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../../lib/storage';
+import type { UserRole } from '../../types/api';
+import { extractRoleFromJwt } from './jwt';
 import { login as loginRequest } from './auth';
 
 type LoginInput = {
@@ -17,6 +19,8 @@ type LoginInput = {
 
 type AuthContextValue = {
   token: string | null;
+  role: UserRole | null;
+  canCreateTickets: boolean;
   isAuthenticated: boolean;
   login: (input: LoginInput) => Promise<void>;
   logout: () => void;
@@ -42,14 +46,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
   }, []);
 
+  const role = useMemo(() => extractRoleFromJwt(token), [token]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       token,
+      role,
+      canCreateTickets: role === 'CUSTOMER',
       isAuthenticated: Boolean(token),
       login,
       logout,
     }),
-    [token, login, logout],
+    [token, role, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

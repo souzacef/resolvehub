@@ -9,6 +9,8 @@ export type AuthResponse = {
   expiresInSeconds: number;
 };
 
+export type UserRole = 'CUSTOMER' | 'AGENT' | 'MANAGER' | 'ADMIN';
+
 export type TicketStatus =
   | 'OPEN'
   | 'IN_PROGRESS'

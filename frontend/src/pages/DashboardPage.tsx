@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../features/auth/AuthContext';
 import { apiRequest } from '../lib/apiClient';
 import { computeTicketStats } from '../lib/ticketStats';
 import type { TicketResponse } from '../types/api';
 
 export function DashboardPage() {
+  const { canCreateTickets } = useAuth();
   const [tickets, setTickets] = useState<TicketResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,9 +50,11 @@ export function DashboardPage() {
           <Link className="link-button link-button-secondary" to="/tickets">
             View tickets
           </Link>
-          <Link className="link-button" to="/tickets/new">
-            Create ticket
-          </Link>
+          {canCreateTickets ? (
+            <Link className="link-button" to="/tickets/new">
+              Create ticket
+            </Link>
+          ) : null}
         </div>
       </header>
 
