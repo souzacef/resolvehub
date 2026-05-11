@@ -331,6 +331,72 @@ button:disabled {
   font-weight: 600;
 }
 
+.comments-section {
+  margin-top: 1.4rem;
+  max-width: 980px;
+}
+
+.comments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.comments-header h2 {
+  margin: 0 0 0.7rem;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.comments-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.comment-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 0.85rem 0.9rem;
+}
+
+.comment-meta {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.86rem;
+  margin-bottom: 0.55rem;
+}
+
+.comment-body {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.comment-form {
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 1rem;
+}
+
+.comment-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  margin-bottom: 0.2rem;
+  font-weight: 600;
+}
+
+.comment-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;

@@ -50,3 +50,17 @@ export type CreateTicketRequest = {
   priority: TicketPriority;
   category: TicketCategory;
 };
+
+export type TicketCommentResponse = {
+  id: string;
+  ticketId: string;
+  authorId: string;
+  body: string;
+  internal: boolean;
+  createdAt: string;
+};
+
+export type CreateTicketCommentRequest = {
+  body: string;
+  internal?: boolean;
+};
