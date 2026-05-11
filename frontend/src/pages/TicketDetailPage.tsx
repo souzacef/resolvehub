@@ -5,9 +5,35 @@ import {
   createTicketComment,
   getTicket,
   listTicketComments,
+  updateTicketStatus,
 } from '../features/tickets/tickets';
 import { isApiError } from '../lib/apiClient';
-import type { TicketCommentResponse, TicketResponse } from '../types/api';
+import type {
+  TicketCommentResponse,
+  TicketResponse,
+  TicketStatus,
+} from '../types/api';
+
+const staffStatusTransitions: Record<TicketStatus, TicketStatus[]> = {
+  OPEN: ['IN_PROGRESS', 'CLOSED'],
+  IN_PROGRESS: ['WAITING_CUSTOMER', 'RESOLVED', 'CLOSED'],
+  WAITING_CUSTOMER: ['IN_PROGRESS', 'RESOLVED'],
+  RESOLVED: ['CLOSED', 'IN_PROGRESS'],
+  CLOSED: [],
+};
+
+const allTicketStatuses: TicketStatus[] = [
+  'OPEN',
+  'IN_PROGRESS',
+  'WAITING_CUSTOMER',
+  'RESOLVED',
+  'CLOSED',
+];
+
+type CustomerStatusAction = {
+  nextStatus: TicketStatus;
+  label: string;
+};
 
 export function TicketDetailPage() {
   const { role } = useAuth();
@@ -24,8 +50,16 @@ export function TicketDetailPage() {
   const [isInternalComment, setIsInternalComment] = useState(false);
   const [commentErrorMessage, setCommentErrorMessage] = useState<string | null>(null);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<TicketStatus | ''>('');
+  const [statusErrorMessage, setStatusErrorMessage] = useState<string | null>(null);
+  const [statusSuccessMessage, setStatusSuccessMessage] = useState<string | null>(
+    null,
+  );
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const canCreateInternalComments =
+    role === 'AGENT' || role === 'MANAGER' || role === 'ADMIN';
+  const canUseStaffStatusWorkflow =
     role === 'AGENT' || role === 'MANAGER' || role === 'ADMIN';
 
   useEffect(() => {
@@ -45,6 +79,9 @@ export function TicketDetailPage() {
       setComments([]);
       setCommentsErrorMessage(null);
       setCommentErrorMessage(null);
+      setSelectedStatus('');
+      setStatusErrorMessage(null);
+      setStatusSuccessMessage(null);
 
       try {
         const data = await getTicket(requiredTicketId);
@@ -158,6 +195,63 @@ export function TicketDetailPage() {
     }
   }
 
+  async function handleStatusSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!ticketId) {
+      setStatusErrorMessage('Ticket id was not provided.');
+      return;
+    }
+    const requiredTicketId = ticketId;
+
+    if (!ticket) {
+      setStatusErrorMessage('Ticket details are not loaded yet.');
+      return;
+    }
+
+    if (!selectedStatus) {
+      setStatusErrorMessage('Select a new status before updating.');
+      return;
+    }
+
+    const allowedTransitions = getStaffStatusTransitions(ticket.status);
+    if (!allowedTransitions.includes(selectedStatus)) {
+      setStatusErrorMessage('That status transition is not allowed for your role.');
+      return;
+    }
+
+    await performStatusUpdate(requiredTicketId, selectedStatus);
+  }
+
+  async function handleCustomerStatusAction(nextStatus: TicketStatus) {
+    if (!ticketId) {
+      setStatusErrorMessage('Ticket id was not provided.');
+      return;
+    }
+    const requiredTicketId = ticketId;
+    await performStatusUpdate(requiredTicketId, nextStatus);
+  }
+
+  async function performStatusUpdate(
+    requiredTicketId: string,
+    nextStatus: TicketStatus,
+  ) {
+    setIsUpdatingStatus(true);
+    setStatusErrorMessage(null);
+    setStatusSuccessMessage(null);
+
+    try {
+      await updateTicketStatus(requiredTicketId, { status: nextStatus });
+      const refreshedTicket = await getTicket(requiredTicketId);
+      setTicket(refreshedTicket);
+      setSelectedStatus('');
+      setStatusSuccessMessage(`Ticket status updated to ${refreshedTicket.status}.`);
+    } catch (error) {
+      setStatusErrorMessage(mapStatusSubmitError(error));
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }
+
   function formatDate(value: string) {
     return new Date(value).toLocaleString();
   }
@@ -216,6 +310,58 @@ export function TicketDetailPage() {
 
     return 'Failed to add comment. Please try again.';
   }
+
+  function mapStatusSubmitError(error: unknown): string {
+    if (!isApiError(error)) {
+      return 'Failed to update ticket status. Please try again.';
+    }
+
+    if (error.kind === 'network') {
+      return 'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.';
+    }
+
+    if (error.status === 400) {
+      return 'Invalid status transition. Please choose an allowed next status.';
+    }
+
+    if (error.status === 403) {
+      return 'You do not have permission to update this ticket status.';
+    }
+
+    if (error.status === 404) {
+      return 'Ticket not found for status update.';
+    }
+
+    return 'Failed to update ticket status. Please try again.';
+  }
+
+  function getStaffStatusTransitions(currentStatus: TicketStatus): TicketStatus[] {
+    return staffStatusTransitions[currentStatus];
+  }
+
+  function getCustomerStatusAction(
+    currentStatus: TicketStatus,
+  ): CustomerStatusAction | null {
+    if (currentStatus === 'OPEN') {
+      return { nextStatus: 'CLOSED', label: 'Close ticket' };
+    }
+
+    if (currentStatus === 'RESOLVED') {
+      return { nextStatus: 'IN_PROGRESS', label: 'Reopen ticket' };
+    }
+
+    return null;
+  }
+
+  const staffStatusTransitionsForTicket =
+    ticket && canUseStaffStatusWorkflow
+      ? getStaffStatusTransitions(ticket.status)
+      : [];
+  const customerStatusAction =
+    ticket && role === 'CUSTOMER' ? getCustomerStatusAction(ticket.status) : null;
+  const showCustomerStatusSection =
+    role === 'CUSTOMER' &&
+    Boolean(customerStatusAction || statusErrorMessage || statusSuccessMessage);
 
   return (
     <section>
@@ -289,6 +435,111 @@ export function TicketDetailPage() {
             </div>
           </dl>
         </article>
+      ) : null}
+
+      {!isLoading && !errorMessage && ticket && canUseStaffStatusWorkflow ? (
+        <section className="comments-section">
+          <div className="comments-header">
+            <h2>Status Workflow</h2>
+          </div>
+
+          <p className="muted-text">
+            Current status: <strong>{ticket.status}</strong>
+          </p>
+
+          {staffStatusTransitionsForTicket.length === 0 ? (
+            <p className="state-panel muted-text">
+              This ticket has no available status transitions.
+            </p>
+          ) : (
+            <form className="comment-form" onSubmit={handleStatusSubmit} noValidate>
+              <label htmlFor="ticket-status-select">Change status</label>
+              <select
+                id="ticket-status-select"
+                name="status"
+                value={selectedStatus}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setSelectedStatus(
+                    value && allTicketStatuses.includes(value as TicketStatus)
+                      ? (value as TicketStatus)
+                      : '',
+                  );
+                  setStatusErrorMessage(null);
+                  setStatusSuccessMessage(null);
+                }}
+              >
+                <option value="">Select next status</option>
+                {staffStatusTransitionsForTicket.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+
+              {statusErrorMessage ? (
+                <p className="state-panel state-error" role="alert">
+                  {statusErrorMessage}
+                </p>
+              ) : null}
+              {statusSuccessMessage ? (
+                <p className="state-panel" role="status">
+                  {statusSuccessMessage}
+                </p>
+              ) : null}
+
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  disabled={isUpdatingStatus || selectedStatus.length === 0}
+                >
+                  {isUpdatingStatus ? 'Updating status...' : 'Update status'}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      ) : null}
+
+      {!isLoading && !errorMessage && ticket && showCustomerStatusSection ? (
+        <section className="comments-section">
+          <div className="comments-header">
+            <h2>Ticket Status</h2>
+          </div>
+
+          <p className="muted-text">
+            Current status: <strong>{ticket.status}</strong>
+          </p>
+
+          {customerStatusAction ? (
+            <div className="comment-form">
+              <div className="form-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handleCustomerStatusAction(customerStatusAction.nextStatus)
+                  }
+                  disabled={isUpdatingStatus}
+                >
+                  {isUpdatingStatus
+                    ? 'Updating status...'
+                    : customerStatusAction.label}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {statusErrorMessage ? (
+            <p className="state-panel state-error" role="alert">
+              {statusErrorMessage}
+            </p>
+          ) : null}
+          {statusSuccessMessage ? (
+            <p className="state-panel" role="status">
+              {statusSuccessMessage}
+            </p>
+          ) : null}
+        </section>
       ) : null}
 
       {!isLoading && !errorMessage && ticket ? (

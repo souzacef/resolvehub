@@ -4,6 +4,7 @@ import type {
   CreateTicketRequest,
   TicketCommentResponse,
   TicketResponse,
+  UpdateTicketStatusRequest,
 } from '../../types/api';
 
 export async function createTicket(
@@ -31,6 +32,16 @@ export async function createTicketComment(
 ): Promise<TicketCommentResponse> {
   return apiRequest<TicketCommentResponse>(`/api/tickets/${ticketId}/comments`, {
     method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateTicketStatus(
+  ticketId: string,
+  payload: UpdateTicketStatusRequest,
+): Promise<TicketResponse> {
+  return apiRequest<TicketResponse>(`/api/tickets/${ticketId}/status`, {
+    method: 'PATCH',
     body: payload,
   });
 }

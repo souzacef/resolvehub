@@ -64,3 +64,7 @@ export type CreateTicketCommentRequest = {
   body: string;
   internal?: boolean;
 };
+
+export type UpdateTicketStatusRequest = {
+  status: TicketStatus;
+};
