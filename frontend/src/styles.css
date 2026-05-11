@@ -281,6 +281,56 @@ button:disabled {
   padding-left: 1.2rem;
 }
 
+.detail-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  padding: 1.2rem;
+  max-width: 980px;
+  box-shadow: var(--shadow);
+}
+
+.detail-card h2 {
+  margin-top: 0;
+  margin-bottom: 0.7rem;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.detail-description {
+  margin: 0 0 1.2rem;
+  color: #28483a;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+  margin: 0;
+}
+
+.detail-field {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-soft);
+  padding: 0.75rem 0.8rem;
+}
+
+.detail-field dt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.detail-field dd {
+  margin: 0.4rem 0 0;
+  font-weight: 600;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -334,6 +384,10 @@ th {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 }
