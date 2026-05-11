@@ -68,3 +68,7 @@ export type CreateTicketCommentRequest = {
 export type UpdateTicketStatusRequest = {
   status: TicketStatus;
 };
+
+export type UpdateTicketAssigneeRequest = {
+  assigneeId: string | null;
+};

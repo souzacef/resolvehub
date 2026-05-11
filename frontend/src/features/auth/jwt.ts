@@ -2,11 +2,38 @@ import type { UserRole } from '../../types/api';
 
 type JwtPayload = {
   role?: unknown;
+  uid?: unknown;
 };
 
 const roles: UserRole[] = ['CUSTOMER', 'AGENT', 'MANAGER', 'ADMIN'];
 
 export function extractRoleFromJwt(token: string | null): UserRole | null {
+  const parsed = parsePayload(token);
+  if (!parsed) {
+    return null;
+  }
+
+  if (typeof parsed.role === 'string' && roles.includes(parsed.role as UserRole)) {
+    return parsed.role as UserRole;
+  }
+
+  return null;
+}
+
+export function extractUserIdFromJwt(token: string | null): string | null {
+  const parsed = parsePayload(token);
+  if (!parsed) {
+    return null;
+  }
+
+  if (typeof parsed.uid !== 'string' || parsed.uid.trim().length === 0) {
+    return null;
+  }
+
+  return parsed.uid.trim();
+}
+
+function parsePayload(token: string | null): JwtPayload | null {
   if (!token) {
     return null;
   }
@@ -18,13 +45,7 @@ export function extractRoleFromJwt(token: string | null): UserRole | null {
 
   try {
     const payload = decodeBase64Url(sections[1]);
-    const parsed = JSON.parse(payload) as JwtPayload;
-
-    if (typeof parsed.role === 'string' && roles.includes(parsed.role as UserRole)) {
-      return parsed.role as UserRole;
-    }
-
-    return null;
+    return JSON.parse(payload) as JwtPayload;
   } catch {
     return null;
   }

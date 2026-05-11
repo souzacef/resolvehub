@@ -4,6 +4,7 @@ import type {
   CreateTicketRequest,
   TicketCommentResponse,
   TicketResponse,
+  UpdateTicketAssigneeRequest,
   UpdateTicketStatusRequest,
 } from '../../types/api';
 
@@ -41,6 +42,16 @@ export async function updateTicketStatus(
   payload: UpdateTicketStatusRequest,
 ): Promise<TicketResponse> {
   return apiRequest<TicketResponse>(`/api/tickets/${ticketId}/status`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function updateTicketAssignee(
+  ticketId: string,
+  payload: UpdateTicketAssigneeRequest,
+): Promise<TicketResponse> {
+  return apiRequest<TicketResponse>(`/api/tickets/${ticketId}/assignee`, {
     method: 'PATCH',
     body: payload,
   });

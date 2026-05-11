@@ -5,7 +5,7 @@ import { apiRequest } from '../lib/apiClient';
 import type { TicketResponse } from '../types/api';
 
 export function TicketsPage() {
-  const { canCreateTickets } = useAuth();
+  const { canCreateTickets, role } = useAuth();
   const [tickets, setTickets] = useState<TicketResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +44,9 @@ export function TicketsPage() {
     return `${assigneeId.slice(0, 8)}...`;
   }
 
+  const showAssigneeColumn = role !== 'CUSTOMER';
+  const isCustomer = role === 'CUSTOMER';
+
   return (
     <section>
       <header className="page-header">
@@ -78,9 +81,9 @@ export function TicketsPage() {
                 <th>Status</th>
                 <th>Priority</th>
                 <th>Category</th>
-                <th>Assignee</th>
-                <th>SLA due</th>
-                <th>Overdue</th>
+                {showAssigneeColumn ? <th>Assignee</th> : null}
+                <th>{isCustomer ? 'Expected response by' : 'SLA due at'}</th>
+                <th>{isCustomer ? 'SLA status' : 'Overdue'}</th>
               </tr>
             </thead>
             <tbody>
@@ -92,16 +95,22 @@ export function TicketsPage() {
                   <td>{ticket.status}</td>
                   <td>{ticket.priority}</td>
                   <td>{ticket.category}</td>
-                  <td>{formatAssignee(ticket.assigneeId)}</td>
+                  {showAssigneeColumn ? (
+                    <td>{formatAssignee(ticket.assigneeId)}</td>
+                  ) : null}
                   <td>{new Date(ticket.slaDueAt).toLocaleString()}</td>
                   <td>
-                    <span
-                      className={
-                        ticket.overdue ? 'pill pill-danger' : 'pill pill-success'
-                      }
-                    >
-                      {ticket.overdue ? 'Overdue' : 'On track'}
-                    </span>
+                    {isCustomer ? (
+                      ticket.overdue ? 'Overdue' : 'On track'
+                    ) : (
+                      <span
+                        className={
+                          ticket.overdue ? 'pill pill-danger' : 'pill pill-success'
+                        }
+                      >
+                        {ticket.overdue ? 'Overdue' : 'On track'}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

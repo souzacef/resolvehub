@@ -5,6 +5,7 @@ import {
   createTicketComment,
   getTicket,
   listTicketComments,
+  updateTicketAssignee,
   updateTicketStatus,
 } from '../features/tickets/tickets';
 import { isApiError } from '../lib/apiClient';
@@ -36,7 +37,7 @@ type CustomerStatusAction = {
 };
 
 export function TicketDetailPage() {
-  const { role } = useAuth();
+  const { role, userId } = useAuth();
   const { ticketId } = useParams();
   const [ticket, setTicket] = useState<TicketResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,11 +57,21 @@ export function TicketDetailPage() {
     null,
   );
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [assignmentErrorMessage, setAssignmentErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [assignmentSuccessMessage, setAssignmentSuccessMessage] = useState<
+    string | null
+  >(null);
+  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
 
   const canCreateInternalComments =
     role === 'AGENT' || role === 'MANAGER' || role === 'ADMIN';
   const canUseStaffStatusWorkflow =
     role === 'AGENT' || role === 'MANAGER' || role === 'ADMIN';
+  const canManageAssignments = role === 'ADMIN' || role === 'MANAGER';
+  const canUseAgentSelfAssignment = role === 'AGENT' && Boolean(userId);
+  const isCustomer = role === 'CUSTOMER';
 
   useEffect(() => {
     if (!ticketId) {
@@ -82,6 +93,8 @@ export function TicketDetailPage() {
       setSelectedStatus('');
       setStatusErrorMessage(null);
       setStatusSuccessMessage(null);
+      setAssignmentErrorMessage(null);
+      setAssignmentSuccessMessage(null);
 
       try {
         const data = await getTicket(requiredTicketId);
@@ -252,6 +265,51 @@ export function TicketDetailPage() {
     }
   }
 
+  async function handleAgentAssignToMe() {
+    if (!ticketId) {
+      setAssignmentErrorMessage('Ticket id was not provided.');
+      return;
+    }
+    if (!userId) {
+      setAssignmentErrorMessage('Your user id is not available in the current token.');
+      return;
+    }
+
+    await performAssignmentUpdate(ticketId, userId, 'Ticket assigned to you.');
+  }
+
+  async function handleUnassignTicket() {
+    if (!ticketId) {
+      setAssignmentErrorMessage('Ticket id was not provided.');
+      return;
+    }
+
+    await performAssignmentUpdate(ticketId, null, 'Ticket unassigned.');
+  }
+
+  async function performAssignmentUpdate(
+    requiredTicketId: string,
+    assigneeId: string | null,
+    successMessage: string,
+  ) {
+    setIsUpdatingAssignment(true);
+    setAssignmentErrorMessage(null);
+    setAssignmentSuccessMessage(null);
+
+    try {
+      await updateTicketAssignee(requiredTicketId, {
+        assigneeId,
+      });
+      const refreshedTicket = await getTicket(requiredTicketId);
+      setTicket(refreshedTicket);
+      setAssignmentSuccessMessage(successMessage);
+    } catch (error) {
+      setAssignmentErrorMessage(mapAssignmentSubmitError(error));
+    } finally {
+      setIsUpdatingAssignment(false);
+    }
+  }
+
   function formatDate(value: string) {
     return new Date(value).toLocaleString();
   }
@@ -335,6 +393,30 @@ export function TicketDetailPage() {
     return 'Failed to update ticket status. Please try again.';
   }
 
+  function mapAssignmentSubmitError(error: unknown): string {
+    if (!isApiError(error)) {
+      return 'Failed to update assignment. Please try again.';
+    }
+
+    if (error.kind === 'network') {
+      return 'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.';
+    }
+
+    if (error.status === 403) {
+      return 'You do not have permission to assign this ticket.';
+    }
+
+    if (error.status === 400) {
+      return 'This ticket cannot be assigned with the selected assignee.';
+    }
+
+    if (error.status === 404) {
+      return 'Ticket or assignee was not found.';
+    }
+
+    return 'Failed to update assignment. Please try again.';
+  }
+
   function getStaffStatusTransitions(currentStatus: TicketStatus): TicketStatus[] {
     return staffStatusTransitions[currentStatus];
   }
@@ -362,6 +444,18 @@ export function TicketDetailPage() {
   const showCustomerStatusSection =
     role === 'CUSTOMER' &&
     Boolean(customerStatusAction || statusErrorMessage || statusSuccessMessage);
+  const canAgentAssignToSelf =
+    canUseAgentSelfAssignment &&
+    Boolean(ticket && !ticket.assigneeId && ticket.status !== 'CLOSED');
+  const showAssignmentSection =
+    !isCustomer &&
+    Boolean(
+      ticket &&
+        (canManageAssignments ||
+          canAgentAssignToSelf ||
+          assignmentErrorMessage ||
+          assignmentSuccessMessage),
+    );
 
   return (
     <section>
@@ -405,24 +499,30 @@ export function TicketDetailPage() {
               <dt>Category</dt>
               <dd>{ticket.category}</dd>
             </div>
+            {!isCustomer ? (
+              <div className="detail-field">
+                <dt>Assignee</dt>
+                <dd>{formatAssignee(ticket.assigneeId)}</dd>
+              </div>
+            ) : null}
             <div className="detail-field">
-              <dt>Assignee</dt>
-              <dd>{formatAssignee(ticket.assigneeId)}</dd>
-            </div>
-            <div className="detail-field">
-              <dt>SLA due date</dt>
+              <dt>{isCustomer ? 'Expected response by' : 'SLA due at'}</dt>
               <dd>{formatDate(ticket.slaDueAt)}</dd>
             </div>
             <div className="detail-field">
-              <dt>Overdue</dt>
+              <dt>{isCustomer ? 'SLA status' : 'Overdue'}</dt>
               <dd>
-                <span
-                  className={
-                    ticket.overdue ? 'pill pill-danger' : 'pill pill-success'
-                  }
-                >
-                  {ticket.overdue ? 'Overdue' : 'On track'}
-                </span>
+                {isCustomer ? (
+                  ticket.overdue ? 'Overdue' : 'On track'
+                ) : (
+                  <span
+                    className={
+                      ticket.overdue ? 'pill pill-danger' : 'pill pill-success'
+                    }
+                  >
+                    {ticket.overdue ? 'Overdue' : 'On track'}
+                  </span>
+                )}
               </dd>
             </div>
             <div className="detail-field">
@@ -537,6 +637,65 @@ export function TicketDetailPage() {
           {statusSuccessMessage ? (
             <p className="state-panel" role="status">
               {statusSuccessMessage}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {!isLoading && !errorMessage && ticket && showAssignmentSection ? (
+        <section className="comments-section">
+          <div className="comments-header">
+            <h2>Assignment</h2>
+          </div>
+
+          <p className="muted-text">
+            Current assignee: <strong>{formatAssignee(ticket.assigneeId)}</strong>
+          </p>
+
+          {canManageAssignments ? (
+            <div className="comment-form">
+              <p className="muted-text">
+                Assigning to a specific staff member will be enabled once the
+                organization users endpoint is available.
+              </p>
+              {ticket.assigneeId ? (
+                <div className="form-actions">
+                  <button
+                    type="button"
+                    onClick={() => void handleUnassignTicket()}
+                    disabled={isUpdatingAssignment}
+                  >
+                    {isUpdatingAssignment ? 'Updating assignment...' : 'Unassign ticket'}
+                  </button>
+                </div>
+              ) : (
+                <p className="muted-text">This ticket is currently unassigned.</p>
+              )}
+            </div>
+          ) : null}
+
+          {!canManageAssignments && role === 'AGENT' && canAgentAssignToSelf ? (
+            <div className="comment-form">
+              <div className="form-actions">
+                <button
+                  type="button"
+                  onClick={() => void handleAgentAssignToMe()}
+                  disabled={isUpdatingAssignment}
+                >
+                  {isUpdatingAssignment ? 'Updating assignment...' : 'Assign to me'}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {assignmentErrorMessage ? (
+            <p className="state-panel state-error" role="alert">
+              {assignmentErrorMessage}
+            </p>
+          ) : null}
+          {assignmentSuccessMessage ? (
+            <p className="state-panel" role="status">
+              {assignmentSuccessMessage}
             </p>
           ) : null}
         </section>
