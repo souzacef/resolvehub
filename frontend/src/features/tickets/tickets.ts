@@ -3,6 +3,7 @@ import type {
   AuditLogResponse,
   CreateTicketCommentRequest,
   CreateTicketRequest,
+  OrganizationUserResponse,
   TicketClassificationSuggestion,
   TicketCommentResponse,
   TicketResponse,
@@ -74,4 +75,8 @@ export async function listTicketAuditLogs(
   ticketId: string,
 ): Promise<AuditLogResponse[]> {
   return apiRequest<AuditLogResponse[]>(`/api/tickets/${ticketId}/audit-logs`);
+}
+
+export async function listOrganizationUsers(): Promise<OrganizationUserResponse[]> {
+  return apiRequest<OrganizationUserResponse[]>('/api/organization/users');
 }

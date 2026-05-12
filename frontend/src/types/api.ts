@@ -88,3 +88,10 @@ export type AuditLogResponse = {
   details: string;
   createdAt: string;
 };
+
+export type OrganizationUserResponse = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: UserRole;
+};

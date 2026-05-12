@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { listOrganizationUsers } from '../features/tickets/tickets';
 import { apiRequest } from '../lib/apiClient';
-import type { TicketResponse } from '../types/api';
+import type { OrganizationUserResponse, TicketResponse } from '../types/api';
 
 export function TicketsPage() {
   const { canCreateTickets, role } = useAuth();
   const [tickets, setTickets] = useState<TicketResponse[]>([]);
+  const [organizationUsers, setOrganizationUsers] = useState<
+    OrganizationUserResponse[]
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -16,8 +20,18 @@ export function TicketsPage() {
     async function load() {
       try {
         const data = await apiRequest<TicketResponse[]>('/api/tickets');
+        let users: OrganizationUserResponse[] = [];
+        if (role !== 'CUSTOMER') {
+          try {
+            users = await listOrganizationUsers();
+          } catch {
+            users = [];
+          }
+        }
+
         if (isMounted) {
           setTickets(data);
+          setOrganizationUsers(users);
         }
       } catch {
         if (isMounted) {
@@ -35,13 +49,30 @@ export function TicketsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [role]);
+
+  function shortenId(id: string) {
+    return `${id.slice(0, 8)}...`;
+  }
+
+  function formatUserLabel(userId: string) {
+    const user = organizationUsers.find((candidate) => candidate.id === userId);
+    if (!user) {
+      return shortenId(userId);
+    }
+
+    if (user.name && user.name.trim().length > 0) {
+      return `${user.name.trim()} (${user.email})`;
+    }
+
+    return user.email;
+  }
 
   function formatAssignee(assigneeId: string | null) {
     if (!assigneeId) {
       return 'Unassigned';
     }
-    return `${assigneeId.slice(0, 8)}...`;
+    return formatUserLabel(assigneeId);
   }
 
   const showAssigneeColumn = role !== 'CUSTOMER';

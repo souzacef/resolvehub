@@ -1,9 +1,10 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import {
   createTicketComment,
   getTicket,
+  listOrganizationUsers,
   listTicketAuditLogs,
   listTicketComments,
   requestTicketAiClassification,
@@ -13,6 +14,7 @@ import {
 import { isApiError } from '../lib/apiClient';
 import type {
   AuditLogResponse,
+  OrganizationUserResponse,
   TicketClassificationSuggestion,
   TicketCommentResponse,
   TicketResponse,
@@ -68,6 +70,14 @@ export function TicketDetailPage() {
     string | null
   >(null);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
+  const [organizationUsers, setOrganizationUsers] = useState<
+    OrganizationUserResponse[]
+  >([]);
+  const [organizationUsersErrorMessage, setOrganizationUsersErrorMessage] =
+    useState<string | null>(null);
+  const [isOrganizationUsersLoading, setIsOrganizationUsersLoading] =
+    useState(false);
   const [aiSuggestion, setAiSuggestion] =
     useState<TicketClassificationSuggestion | null>(null);
   const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
@@ -85,6 +95,22 @@ export function TicketDetailPage() {
   const canManageAssignments = role === 'ADMIN' || role === 'MANAGER';
   const canUseAgentSelfAssignment = role === 'AGENT' && Boolean(userId);
   const isCustomer = role === 'CUSTOMER';
+
+  const organizationUsersById = useMemo(() => {
+    const usersById = new Map<string, OrganizationUserResponse>();
+    for (const organizationUser of organizationUsers) {
+      usersById.set(organizationUser.id, organizationUser);
+    }
+    return usersById;
+  }, [organizationUsers]);
+
+  const staffAssignableUsers = useMemo(
+    () =>
+      organizationUsers.filter(
+        (organizationUser) => organizationUser.role !== 'CUSTOMER',
+      ),
+    [organizationUsers],
+  );
 
   useEffect(() => {
     if (!ticketId) {
@@ -108,6 +134,7 @@ export function TicketDetailPage() {
       setStatusSuccessMessage(null);
       setAssignmentErrorMessage(null);
       setAssignmentSuccessMessage(null);
+      setSelectedAssigneeId('');
       setAiSuggestion(null);
       setAiErrorMessage(null);
       setIsAiLoading(false);
@@ -155,6 +182,45 @@ export function TicketDetailPage() {
       isMounted = false;
     };
   }, [ticketId]);
+
+  useEffect(() => {
+    if (isCustomer) {
+      setOrganizationUsers([]);
+      setOrganizationUsersErrorMessage(null);
+      setIsOrganizationUsersLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadOrganizationUsers() {
+      setIsOrganizationUsersLoading(true);
+      setOrganizationUsersErrorMessage(null);
+
+      try {
+        const data = await listOrganizationUsers();
+        if (isMounted) {
+          setOrganizationUsers(data);
+        }
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+        setOrganizationUsers([]);
+        setOrganizationUsersErrorMessage(mapOrganizationUsersLoadError(error));
+      } finally {
+        if (isMounted) {
+          setIsOrganizationUsersLoading(false);
+        }
+      }
+    }
+
+    void loadOrganizationUsers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isCustomer]);
 
   useEffect(() => {
     if (!ticketId || !ticket) {
@@ -227,6 +293,15 @@ export function TicketDetailPage() {
       isMounted = false;
     };
   }, [ticketId, ticket, isCustomer]);
+
+  useEffect(() => {
+    if (!ticket || !canManageAssignments) {
+      setSelectedAssigneeId('');
+      return;
+    }
+
+    setSelectedAssigneeId(ticket.assigneeId ?? '');
+  }, [ticket, canManageAssignments]);
 
   async function handleCommentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -333,6 +408,24 @@ export function TicketDetailPage() {
     await performAssignmentUpdate(ticketId, userId, 'Ticket assigned to you.');
   }
 
+  async function handleAssignSelectedStaffUser() {
+    if (!ticketId) {
+      setAssignmentErrorMessage('Ticket id was not provided.');
+      return;
+    }
+
+    if (!selectedAssigneeId) {
+      setAssignmentErrorMessage('Select a staff user before assigning.');
+      return;
+    }
+
+    await performAssignmentUpdate(
+      ticketId,
+      selectedAssigneeId,
+      `Ticket assigned to ${formatUserLabel(selectedAssigneeId)}.`,
+    );
+  }
+
   async function handleUnassignTicket() {
     if (!ticketId) {
       setAssignmentErrorMessage('Ticket id was not provided.');
@@ -388,22 +481,39 @@ export function TicketDetailPage() {
     return new Date(value).toLocaleString();
   }
 
+  function shortenId(id: string) {
+    return `${id.slice(0, 8)}...`;
+  }
+
+  function formatUserLabel(userId: string) {
+    const user = organizationUsersById.get(userId);
+    if (!user) {
+      return shortenId(userId);
+    }
+
+    if (user.name && user.name.trim().length > 0) {
+      return `${user.name.trim()} (${user.email})`;
+    }
+
+    return user.email;
+  }
+
   function formatAssignee(assigneeId: string | null) {
     if (!assigneeId) {
       return 'Unassigned';
     }
-    return `${assigneeId.slice(0, 8)}...`;
+    return formatUserLabel(assigneeId);
   }
 
   function formatAuthor(authorId: string) {
-    return `${authorId.slice(0, 8)}...`;
+    return formatUserLabel(authorId);
   }
 
   function formatActor(actorId: string | null) {
     if (!actorId) {
       return 'System';
     }
-    return `${actorId.slice(0, 8)}...`;
+    return formatUserLabel(actorId);
   }
 
   function mapCommentLoadError(error: unknown): string {
@@ -542,6 +652,22 @@ export function TicketDetailPage() {
     return 'Failed to load audit logs. Please try again.';
   }
 
+  function mapOrganizationUsersLoadError(error: unknown): string {
+    if (!isApiError(error)) {
+      return 'Failed to load organization users.';
+    }
+
+    if (error.kind === 'network') {
+      return 'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.';
+    }
+
+    if (error.status === 403) {
+      return 'You do not have permission to view organization users.';
+    }
+
+    return 'Failed to load organization users.';
+  }
+
   function getStaffStatusTransitions(currentStatus: TicketStatus): TicketStatus[] {
     return staffStatusTransitions[currentStatus];
   }
@@ -583,6 +709,13 @@ export function TicketDetailPage() {
     );
   const showAiClassificationSection = canUseStaffStatusWorkflow;
   const showAuditLogSection = canUseStaffStatusWorkflow;
+
+  const isClosedTicket = ticket?.status === 'CLOSED';
+  const canSubmitStaffAssignment =
+    canManageAssignments &&
+    !isClosedTicket &&
+    selectedAssigneeId.length > 0 &&
+    selectedAssigneeId !== (ticket?.assigneeId ?? '');
 
   return (
     <section>
@@ -781,16 +914,75 @@ export function TicketDetailPage() {
 
           {canManageAssignments ? (
             <div className="comment-form">
-              <p className="muted-text">
-                Assigning to a specific staff member will be enabled once the
-                organization users endpoint is available.
-              </p>
+              {isOrganizationUsersLoading ? (
+                <p className="state-panel">Loading organization users...</p>
+              ) : null}
+
+              {!isOrganizationUsersLoading && organizationUsersErrorMessage ? (
+                <p className="state-panel state-error" role="alert">
+                  {organizationUsersErrorMessage}
+                </p>
+              ) : null}
+
+              {!isOrganizationUsersLoading &&
+              !organizationUsersErrorMessage &&
+              staffAssignableUsers.length === 0 ? (
+                <p className="muted-text">
+                  No staff users are available for assignment in this organization.
+                </p>
+              ) : null}
+
+              {!isOrganizationUsersLoading &&
+              !organizationUsersErrorMessage &&
+              staffAssignableUsers.length > 0 ? (
+                <>
+                  {isClosedTicket ? (
+                    <p className="muted-text">Closed tickets cannot be assigned.</p>
+                  ) : null}
+
+                  <label htmlFor="ticket-assignee-select">Assign to staff user</label>
+                  <select
+                    id="ticket-assignee-select"
+                    name="assigneeId"
+                    value={selectedAssigneeId}
+                    onChange={(event) => {
+                      setSelectedAssigneeId(event.target.value);
+                      setAssignmentErrorMessage(null);
+                      setAssignmentSuccessMessage(null);
+                    }}
+                    disabled={Boolean(isClosedTicket)}
+                  >
+                    <option value="">Select staff user</option>
+                    {staffAssignableUsers.map((organizationUser) => (
+                      <option key={organizationUser.id} value={organizationUser.id}>
+                        {organizationUser.name && organizationUser.name.trim().length > 0
+                          ? `${organizationUser.name.trim()} (${organizationUser.email})`
+                          : organizationUser.email}{' '}
+                        - {organizationUser.role}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      onClick={() => void handleAssignSelectedStaffUser()}
+                      disabled={isUpdatingAssignment || !canSubmitStaffAssignment}
+                    >
+                      {isUpdatingAssignment
+                        ? 'Updating assignment...'
+                        : 'Assign ticket'}
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
               {ticket.assigneeId ? (
                 <div className="form-actions">
                   <button
                     type="button"
                     onClick={() => void handleUnassignTicket()}
-                    disabled={isUpdatingAssignment}
+                    disabled={isUpdatingAssignment || Boolean(isClosedTicket)}
                   >
                     {isUpdatingAssignment ? 'Updating assignment...' : 'Unassign ticket'}
                   </button>
