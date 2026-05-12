@@ -1,46 +1,51 @@
 # AI Provider Design
 
-## Goal
+## Purpose
 
-ResolveHub uses provider-agnostic AI classification so ticket workflows stay stable while AI providers can be swapped by configuration.
+ResolveHub uses a provider-agnostic AI classification layer so AI capabilities can evolve without changing ticket business logic.
 
-AI classification is explicit and on-demand through:
+AI classification is on-demand through:
 
 - `POST /api/tickets/{ticketId}/ai/classification`
 
-Ticket creation does not call AI and must continue working even if an AI provider is unavailable.
+Ticket creation does not call AI.
 
-## Current Abstraction
+## Current Contract
 
-### `TicketAiClassifier`
+### Interface
 
-Provider interface used by the ticket service.
+`TicketAiClassifier` classifies a ticket and returns a `TicketClassificationSuggestion` with:
 
-Input:
+- `suggestedCategory`
+- `suggestedPriority`
+- `reasoning`
 
-- ticket title
-- ticket description
+### Behavior Guarantees
 
-Output:
+- Suggestions are advisory only.
+- Suggestions do not automatically update ticket category or priority.
+- AI provider failures affect only the AI endpoint response.
+- Core ticket flows (create/list/detail/comment/status/assignment) do not depend on AI availability.
 
-- `TicketClassificationSuggestion`
-  - `suggestedCategory`
-  - `suggestedPriority`
+## Implementations
+
+### 1) `FakeTicketAiClassifier` (default)
+
+- Deterministic rule-based implementation.
+- No network calls.
+- Used by default when `resolvehub.ai.provider` is missing or set to `fake`.
+- Keeps local development and tests stable.
+
+### 2) `OpenAiCompatibleTicketAiClassifier`
+
+- HTTP implementation for OpenAI-compatible APIs.
+- Calls `POST {baseUrl}/chat/completions`.
+- Sends ticket title/description with instructions to return strict JSON:
+  - `category`
+  - `priority`
   - `reasoning`
-
-### Implementations
-
-1. `FakeTicketAiClassifier`
-- deterministic keyword rules
-- no network calls
-- default in dev/test unless provider is overridden
-
-2. `OpenAiCompatibleTicketAiClassifier`
-- HTTP-based implementation for OpenAI-compatible APIs
-- calls `POST {baseUrl}/chat/completions`
-- prompts for strict JSON with `category`, `priority`, `reasoning`
-- validates category/priority against ResolveHub enums
-- returns controlled `502 Bad Gateway` style error when provider response is invalid or request fails
+- Parses and validates response values against ResolveHub enums.
+- Returns controlled provider errors for invalid responses or upstream failures.
 
 ## Configuration
 
@@ -55,7 +60,7 @@ resolvehub:
       timeout-seconds: 20
 ```
 
-Environment variable equivalents used by `application.yml`:
+Environment variables:
 
 - `RESOLVEHUB_AI_PROVIDER`
 - `RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL`
@@ -63,7 +68,7 @@ Environment variable equivalents used by `application.yml`:
 - `RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL`
 - `RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS`
 
-## Local Ollama Example
+## Local Ollama Setup (OpenAI-compatible)
 
 1. Start Ollama:
 
@@ -71,13 +76,13 @@ Environment variable equivalents used by `application.yml`:
 ollama serve
 ```
 
-2. Pull the model:
+2. Pull model:
 
 ```bash
 ollama pull llama3.1:8b
 ```
 
-3. Run backend using OpenAI-compatible provider:
+3. Run backend with OpenAI-compatible provider:
 
 ```bash
 export RESOLVEHUB_AI_PROVIDER=openai-compatible
@@ -87,14 +92,16 @@ export RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL=llama3.1:8b
 export RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS=20
 ```
 
-## Behavior Guarantees
+If these variables are not set, backend defaults to `fake` provider.
 
-- AI suggestions do not automatically update ticket category/priority in v1.0.0.
-- AI endpoint failures are isolated to the AI endpoint response.
-- Core ticket flows remain unaffected.
+## Why This Design
 
-## Future Direction
+- Keeps domain logic isolated from provider details.
+- Enables deterministic tests without real model calls.
+- Allows future provider additions with minimal service/controller changes.
 
-- Add richer prompt/versioning strategy.
-- Add response confidence metadata if needed.
-- Add additional OpenAI-compatible and hosted providers later without changing ticket business logic.
+## Planned Enhancements
+
+- Persist suggestion history/versioning.
+- Add explicit “apply suggestion” workflow with human approval.
+- Extend prompt controls and provider observability.

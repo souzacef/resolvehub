@@ -1,86 +1,144 @@
 # Deployment Notes
 
-## Goal
+## Scope
 
-The MVP should be simple to run locally and straightforward to deploy later.
+This document covers local developer deployment and portfolio evaluation setup for ResolveHub v1.0.0.
 
-Initial deployment focus:
+## Prerequisites
 
-- Docker Compose
-- Environment variables
-- PostgreSQL container
-- Backend container
-- Frontend container
+- Docker and Docker Compose
+- Java 21
+- Node.js 22+
 
-## Local services
+## Local Run (Recommended)
 
-Start only the database and Ollama:
+### 1) Start PostgreSQL
 
 ```bash
-docker compose up -d db ollama
+docker compose up -d db
 ```
 
-Start the full app once backend and frontend Dockerfiles exist:
+Optional AI runtime for OpenAI-compatible mode:
+
+```bash
+docker compose up -d ollama
+```
+
+### 2) Run backend
+
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+Backend URL:
+
+- `http://localhost:8080`
+
+Swagger UI in dev profile:
+
+- `http://localhost:8080/swagger-ui.html`
+
+### 3) Run frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Frontend URL:
+
+- `http://localhost:5173`
+
+## Test and Build Commands
+
+Backend:
+
+```bash
+cd backend
+./mvnw clean verify
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm test -- --run
+npm run build
+```
+
+## Docker Compose App Profile
+
+ResolveHub includes `backend` and `frontend` services under the `app` profile:
 
 ```bash
 docker compose --profile app up --build
 ```
 
-## Environment variables
+This is useful for containerized local demos. For AI behavior, keep backend provider configuration aligned with current application properties (`fake` or `openai-compatible`).
 
-Backend variables:
+## Environment Variables
 
-```text
-SPRING_PROFILES_ACTIVE
-SPRING_DATASOURCE_URL
-SPRING_DATASOURCE_USERNAME
-SPRING_DATASOURCE_PASSWORD
-RESOLVEHUB_AI_PROVIDER
-RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL
-RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY
-RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL
-RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS
-RESOLVEHUB_SEED_DEMO_ENABLED
-RESOLVEHUB_SECURITY_CORS_ALLOWED_ORIGINS
-JWT_SECRET
-```
+### Backend
 
-Frontend variables:
+- `SPRING_PROFILES_ACTIVE`
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `JWT_SECRET`
+- `JWT_EXPIRATION_SECONDS`
+- `RESOLVEHUB_SECURITY_CORS_ALLOWED_ORIGINS`
+- `RESOLVEHUB_AI_PROVIDER`
+- `RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL`
+- `RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY`
+- `RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL`
+- `RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS`
+- `RESOLVEHUB_SEED_DEMO_ENABLED`
 
-```text
-VITE_API_BASE_URL
-```
+### Frontend
 
-Local CORS defaults allow:
+- `VITE_API_BASE_URL`
+
+Default local frontend target:
+
+- `VITE_API_BASE_URL=http://localhost:8080`
+
+## Local CORS
+
+Backend allows local frontend origins by default:
 
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
 
-Override if needed:
+Override example:
 
-```text
-RESOLVEHUB_SECURITY_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```bash
+export RESOLVEHUB_SECURITY_CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
-## Production notes
+## Demo Credentials
 
-Do not use the default local database password in production.
-
-Do not commit secrets.
-
-Use managed PostgreSQL or a properly backed-up database volume for real deployment.
-
-Run migrations automatically only if the deployment process is designed for it.
-
-## Dev Demo Accounts
-
-When running with `SPRING_PROFILES_ACTIVE=dev` (or `RESOLVEHUB_SEED_DEMO_ENABLED=true`), ResolveHub seeds idempotent demo data:
+When backend runs with `dev` profile (default) or demo seed is enabled:
 
 - `admin@resolvehub.dev` / `Password123!`
 - `manager@resolvehub.dev` / `Password123!`
 - `agent@resolvehub.dev` / `Password123!`
 - `customer@resolvehub.dev` / `Password123!`
 
-The seed creates one demo organization, sample tickets across statuses/priorities, comments, and assigned work so Swagger can be explored immediately.
+Seed behavior:
 
-If your local database was created before the latest demo-seed consistency fixes and demo users/tickets look split across organizations, reset your local dev database volume and restart the backend so a fresh coherent demo dataset is created.
+- idempotent
+- single coherent demo organization
+- sample tickets, comments, and assignment
+
+If your existing local data was seeded before demo-data consistency fixes, reset local database volumes and reseed.
+
+## Production Hardening Notes
+
+- Replace default database credentials.
+- Use strong, managed secrets for `JWT_SECRET` and provider keys.
+- Restrict CORS to trusted production origins.
+- Run with non-dev profile and disable demo seeding.
+- Add TLS, monitoring, and backup strategy before production usage.

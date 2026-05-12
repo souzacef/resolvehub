@@ -1,103 +1,89 @@
 # ResolveHub
 
-ResolveHub is a portfolio-grade customer support ticket platform focused on backend engineering quality, practical product workflows, and deployment-ready project discipline.
+ResolveHub is a portfolio-ready full-stack customer support ticket platform. It demonstrates backend architecture, security, product workflows, testing discipline, and deployment readiness.
 
-The repository currently contains a clean, reviewed foundation: architecture decisions, testing strategy, AI provider design, local infrastructure, and CI scaffolding.
+## Implemented Features
 
-## Mission
+- Organization-based multi-tenancy
+- JWT authentication and role-based access control
+- Ticket creation, listing, detail view, and status workflow
+- Ticket comments (public/internal rules by role)
+- Ticket assignment with role constraints
+- SLA deadline calculation and overdue detection
+- Ticket audit logs
+- AI-assisted ticket classification (advisory suggestions)
+- Dev demo data seeding
+- CI with GitHub Actions
 
-Build a professional full-stack support platform that demonstrates:
+## Role Behavior
 
-- organization-based multi-tenancy
-- secure authentication and authorization
-- ticket workflow and SLA handling
-- auditability and operational reliability
-- AI-assisted classification with safe fallbacks
-- realistic tests, documentation, and delivery workflow
+- `CUSTOMER`: creates tickets and views/comments on own tickets
+- `AGENT`, `MANAGER`, `ADMIN`: manage tickets in their organization
 
-## Product scope
-
-ResolveHub helps organizations manage customer support tickets from creation to closure.
-
-Primary roles:
-
-- `CUSTOMER`: creates and follows their own tickets
-- `AGENT`: handles assigned or unassigned tickets in their organization
-- `MANAGER`: manages assignment, escalations, and workflow operations
-- `ADMIN`: manages organization-level users and settings
-
-Ticket lifecycle:
-
-```text
-OPEN -> IN_PROGRESS -> WAITING_CUSTOMER -> RESOLVED -> CLOSED
-```
-
-Controlled reopen behavior:
-
-```text
-RESOLVED -> IN_PROGRESS
-CLOSED -> IN_PROGRESS (MANAGER or ADMIN only)
-```
-
-## Tech stack
+## Tech Stack
 
 Backend:
-
 - Java 21
-- Spring Boot
+- Spring Boot 3
 - Spring Security + JWT
-- PostgreSQL + JPA/Hibernate + Flyway
-- Validation + OpenAPI/Swagger
+- Spring Data JPA + Hibernate
+- PostgreSQL
+- Flyway
+- springdoc OpenAPI/Swagger
 - JUnit 5 + Testcontainers
 
 Frontend:
-
-- React
+- React 18
 - TypeScript
 - Vite
+- Vitest
 
 Infrastructure:
-
 - Docker Compose
 - GitHub Actions
-- Local Ollama-compatible AI endpoint
 
-## Repository layout
+## Architecture Overview
 
-```text
-resolvehub/
-  backend/
-  frontend/
-  docs/
-    architecture.md
-    ai-provider-design.md
-    testing-strategy.md
-    deployment.md
-  .github/
-    pull_request_template.md
-    workflows/ci.yml
-  docker-compose.yml
-  README.md
-  .gitignore
-```
+- React frontend calls a secured Spring Boot API.
+- JWT carries user id, organization id, and role claims.
+- Backend enforces authorization and organization scoping.
+- PostgreSQL stores organizations, users, tickets, comments, and audit logs.
+- AI classification is provider-agnostic (`fake` by default, OpenAI-compatible optional).
 
-## Local infrastructure
+See [docs/architecture.md](docs/architecture.md) for details.
 
-Start the foundational services:
+## Local Setup
+
+### Prerequisites
+
+- Java 21
+- Node.js 22+ and npm
+- Docker + Docker Compose
+
+### 1) Start infrastructure
 
 ```bash
-docker compose up -d db ollama
+docker compose up -d db
 ```
 
-Start application containers when backend/frontend Dockerfiles are available:
+Optional (for local AI provider testing):
 
 ```bash
-docker compose --profile app up --build
+docker compose up -d ollama
 ```
 
-## Frontend local run
+### 2) Run backend
 
-The frontend lives in `/frontend` and expects the backend at `http://localhost:8080` by default.
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+Backend runs on `http://localhost:8080`.
+
+Swagger UI (dev profile): `http://localhost:8080/swagger-ui.html`
+
+### 3) Run frontend
 
 ```bash
 cd frontend
@@ -106,37 +92,75 @@ cp .env.example .env
 npm run dev
 ```
 
-Build check:
+Frontend runs on `http://localhost:5173`.
+
+## Run Tests
+
+Backend:
 
 ```bash
+cd backend
+./mvnw clean verify
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm test -- --run
 npm run build
 ```
 
-## Development standards
+## Docker Compose
 
-- Keep changes small and reviewable.
-- Enforce tenant boundaries and authorization in backend logic.
-- Add or update tests with behavior changes.
-- Keep docs aligned with implementation changes.
-- Never commit secrets.
+Start full app stack (DB + Ollama + backend + frontend):
 
-Recommended branches:
-
-```text
-feature/<issue-number>-short-description
-fix/<issue-number>-short-description
-docs/<issue-number>-short-description
+```bash
+docker compose --profile app up --build
 ```
 
-Recommended commit format:
+Notes:
+- App services in Compose run with Docker profile configuration.
+- If you want backend AI classification to use Ollama, set `RESOLVEHUB_AI_PROVIDER=openai-compatible` for the backend environment.
 
-```text
-type(scope): short description
-```
+## Demo Credentials
 
-## Documentation index
+When running backend with default `dev` profile, demo data is seeded:
+
+- `admin@resolvehub.dev` / `Password123!`
+- `manager@resolvehub.dev` / `Password123!`
+- `agent@resolvehub.dev` / `Password123!`
+- `customer@resolvehub.dev` / `Password123!`
+
+## AI Behavior
+
+- AI suggestions are advisory only.
+- Suggestions do not automatically update ticket category or priority.
+- `fake` provider is default.
+- OpenAI-compatible provider can be enabled for Ollama (`http://127.0.0.1:11434/v1`).
+
+See [docs/ai-provider-design.md](docs/ai-provider-design.md).
+
+## CI Status
+
+GitHub Actions workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+Current CI jobs:
+- repository validation
+- backend build and tests (`./mvnw clean verify`)
+- frontend build and tests (`npm run build`, `npm test -- --run`)
+
+## Documentation
 
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - AI provider design: [docs/ai-provider-design.md](docs/ai-provider-design.md)
 - Testing strategy: [docs/testing-strategy.md](docs/testing-strategy.md)
 - Deployment notes: [docs/deployment.md](docs/deployment.md)
+
+## Roadmap
+
+- Organization users endpoint for richer assignment UI
+- Apply-AI-suggestion workflow (manual approval step)
+- Deployment automation / CD
+- Product screenshots and demo walkthrough assets
+- Production hardening (observability, secrets management, security controls)

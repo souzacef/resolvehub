@@ -2,364 +2,178 @@
 
 ## Overview
 
-ResolveHub is a full-stack customer support ticket platform. The system is designed around organization-scoped data, role-based permissions, auditable workflow changes, and AI-assisted classification.
+ResolveHub is a full-stack customer support ticket platform designed around organization-scoped data, role-based access control, auditable ticket operations, and optional AI-assisted classification.
 
-The MVP should remain modular without becoming over-engineered. The backend owns the business rules. The frontend provides a clean operational interface. The AI layer suggests classifications but does not replace human approval.
+Core principles in the current implementation:
 
-## High-level system
+- Backend is the source of truth for authorization and business rules.
+- Multi-tenancy is enforced by organization scoping on data access.
+- AI suggestions are advisory and isolated from core ticket creation/update flows.
+
+## High-level System
 
 ```text
-Browser
+React (Vite, TypeScript)
   |
-  v
-React Frontend
-  |
+  |  JWT Bearer API calls
   v
 Spring Boot API
   |
-  +--> PostgreSQL
+  +--> PostgreSQL (organizations, users, tickets, comments, audit logs)
   |
-  +--> AI Provider Abstraction
-          |
-          +--> Ollama Provider
-          +--> OpenAI Provider, future
-          +--> Fake Provider, tests
+  +--> Ticket AI Classifier abstraction
+         +--> Fake provider (default)
+         +--> OpenAI-compatible provider (optional, e.g., Ollama)
 ```
 
-## Backend responsibilities
+## Backend Modules
 
-The backend is responsible for:
+- `auth`: register/login endpoints, password hashing, JWT issuance
+- `common.security`: JWT filter, principal mapping, security configuration
+- `organization`: tenant model
+- `user`: user model and role model
+- `ticket`: ticket CRUD/listing/detail, status workflow, assignment, SLA due date, overdue filtering
+- `ticketcomment`: ticket comment creation/listing with internal/public visibility rules
+- `audit`: append-only ticket audit logs and visibility rules
+- `ai`: provider abstraction + fake provider + OpenAI-compatible provider
+- `seed`: dev-only demo data seeding
 
-- Authentication and JWT issuance
-- Authorization and role checks
-- Organization-based multi-tenancy
-- Ticket workflow validation
-- SLA deadline calculation
-- Overdue ticket detection
-- Audit log creation
-- AI classification orchestration
-- API documentation
-
-## Frontend responsibilities
-
-The frontend is responsible for:
-
-- Login flow
-- Ticket dashboard
-- Ticket creation form
-- Ticket detail view
-- Commenting UI
-- Role-aware actions
-- Clear display of SLA status and priority
-
-The frontend should not enforce business rules as the source of truth. It may hide unavailable actions for usability, but the backend must validate every important operation.
-
-## Core domain model
+## Core Domain Model
 
 ### Organization
 
-Represents a tenant. Users, tickets, SLA policies, and audit logs belong to an organization.
-
-Important fields:
-
-- id
-- name
-- status
-- createdAt
-- updatedAt
+- `id`
+- `name` (unique)
+- `status`
+- `createdAt`
+- `updatedAt`
 
 ### User
 
-Represents an authenticated system user.
-
-Important fields:
-
-- id
-- organizationId
-- name
-- email
-- passwordHash
-- role
-- status
-- createdAt
-- updatedAt
-
-Roles:
-
-```text
-CUSTOMER
-AGENT
-MANAGER
-ADMIN
-```
+- `id`
+- `organization`
+- `name`
+- `email` (unique)
+- `passwordHash` (BCrypt)
+- `role` (`CUSTOMER`, `AGENT`, `MANAGER`, `ADMIN`)
+- `status`
+- `createdAt`
+- `updatedAt`
 
 ### Ticket
 
-Represents a support request.
-
-Important fields:
-
-- id
-- organizationId
-- createdByUserId
-- assignedAgentId
-- title
-- description
-- status
-- priority
-- category
-- slaDeadlineAt
-- resolvedAt
-- closedAt
-- createdAt
-- updatedAt
-
-Statuses:
-
-```text
-OPEN
-IN_PROGRESS
-WAITING_CUSTOMER
-RESOLVED
-CLOSED
-```
-
-Priorities:
-
-```text
-LOW
-MEDIUM
-HIGH
-URGENT
-```
-
-Categories:
-
-```text
-BILLING
-TECHNICAL
-ACCOUNT
-FEATURE_REQUEST
-SECURITY
-OTHER
-```
+- `id`
+- `organization`
+- `requester`
+- `assignee` (nullable)
+- `title`
+- `description`
+- `status` (`OPEN`, `IN_PROGRESS`, `WAITING_CUSTOMER`, `RESOLVED`, `CLOSED`)
+- `priority` (`LOW`, `MEDIUM`, `HIGH`, `URGENT`)
+- `category` (`BILLING`, `TECHNICAL`, `ACCOUNT`, `FEATURE_REQUEST`, `SECURITY`, `OTHER`)
+- `slaDueAt`
+- `createdAt`
+- `updatedAt`
 
 ### TicketComment
 
-Represents a message in a ticket conversation.
-
-Important fields:
-
-- id
-- organizationId
-- ticketId
-- authorUserId
-- body
-- visibility
-- createdAt
-
-Visibility:
-
-```text
-PUBLIC
-INTERNAL
-```
-
-### SLA Policy
-
-Defines deadlines based on ticket priority.
-
-Important fields:
-
-- id
-- organizationId
-- priority
-- responseTimeMinutes
-- resolutionTimeMinutes
-- active
+- `id`
+- `ticket`
+- `author`
+- `body`
+- `internal`
+- `createdAt`
 
 ### AuditLog
 
-Represents immutable records of important business actions.
+- `id`
+- `organization`
+- `actor` (nullable)
+- `ticket` (nullable)
+- `action` (`TICKET_CREATED`, `TICKET_STATUS_CHANGED`, `TICKET_ASSIGNED`, `TICKET_UNASSIGNED`, `COMMENT_ADDED`)
+- `details`
+- `createdAt`
 
-Important fields:
+## Security and Multi-tenancy
 
-- id
-- organizationId
-- actorUserId
-- entityType
-- entityId
-- action
-- beforeValue
-- afterValue
-- createdAt
+- JWT is required for all protected endpoints.
+- Public endpoints:
+  - `/api/auth/**`
+  - `/api/health`
+  - `/actuator/health`
+  - Swagger/OpenAPI endpoints in `dev` profile
+- CORS is restricted by configured allowed origins.
+- Tenant isolation is enforced in service/repository access using authenticated organization id.
 
-Audited events should include:
+## Role Behavior
 
-- Ticket status changed
-- Ticket assigned
-- Ticket priority changed
-- Ticket category changed
-- Ticket reopened
-- Ticket closed
+- `CUSTOMER`
+  - can create tickets
+  - can list/view only own tickets
+  - can comment only on own tickets
+  - cannot create internal comments
+  - cannot assign tickets
+  - cannot view audit logs
+- `AGENT`, `MANAGER`, `ADMIN`
+  - can list/view tickets in own organization
+  - can create internal/public comments in own organization
+  - can request AI classification
+- Assignment-specific behavior:
+  - `AGENT` can assign unassigned tickets only to self
+  - `MANAGER` and `ADMIN` can assign/unassign eligible staff users in own organization
 
-### AI Classification
+## Ticket Workflow
 
-Represents an AI suggestion for a ticket.
+Allowed transitions implemented in backend:
 
-Important fields:
+- `OPEN -> IN_PROGRESS`
+- `OPEN -> CLOSED`
+- `IN_PROGRESS -> WAITING_CUSTOMER`
+- `IN_PROGRESS -> RESOLVED`
+- `IN_PROGRESS -> CLOSED`
+- `WAITING_CUSTOMER -> IN_PROGRESS`
+- `WAITING_CUSTOMER -> RESOLVED`
+- `RESOLVED -> CLOSED`
+- `RESOLVED -> IN_PROGRESS`
+- `CLOSED ->` no transitions
 
-- id
-- organizationId
-- ticketId
-- provider
-- model
-- suggestedPriority
-- suggestedCategory
-- confidence
-- explanation
-- createdAt
-- approvedByUserId
-- approvedAt
+Customer-specific status permissions:
 
-## Package structure proposal
+- `OPEN -> CLOSED`
+- `RESOLVED -> IN_PROGRESS`
 
-```text
-com.resolvehub
-  config
-  common
-    exception
-    security
-    web
-  auth
-    controller
-    dto
-    service
-  organization
-    domain
-    repository
-    service
-  user
-    domain
-    repository
-    service
-  ticket
-    domain
-    repository
-    service
-    controller
-    dto
-  sla
-    domain
-    repository
-    service
-    scheduler
-  audit
-    domain
-    repository
-    service
-  ai
-    domain
-    dto
-    provider
-    service
-```
+## SLA and Overdue Rules
 
-## Security model
+SLA due date is set on ticket creation only:
 
-All API requests except authentication endpoints should require a valid JWT.
+- `URGENT`: `createdAt + 4h`
+- `HIGH`: `createdAt + 8h`
+- `MEDIUM`: `createdAt + 24h`
+- `LOW`: `createdAt + 72h`
 
-Authorization is based on:
+Overdue is computed dynamically in responses when:
 
-- authenticated user id
-- organization id
-- role
-- resource ownership or assignment
+- `slaDueAt < now`, and
+- status is not `RESOLVED`, and
+- status is not `CLOSED`
 
-Rules:
+No scheduler persists overdue state in v1.0.0.
 
-- Customers can access only their own tickets.
-- Agents can access assigned or unassigned tickets in their organization.
-- Managers can access all tickets in their organization.
-- Admins can manage organization-level settings and users.
-- Cross-organization access is forbidden.
+## AI Classification
 
-## Multi-tenancy model
+AI classification is explicit and endpoint-driven:
 
-The MVP uses shared-database multi-tenancy with an `organization_id` column on tenant-owned tables.
+- `POST /api/tickets/{ticketId}/ai/classification`
 
-Every tenant-owned query must include organization scoping.
+Response returns suggestion only:
 
-No controller should accept organization id blindly as the source of truth. The backend should derive the current user's organization from the authenticated principal.
+- suggested category
+- suggested priority
+- short reasoning
 
-## Ticket workflow rules
+AI suggestions do not automatically update the ticket.
 
-Allowed status transitions:
+## API Documentation and CI
 
-```text
-OPEN -> IN_PROGRESS
-OPEN -> WAITING_CUSTOMER
-OPEN -> RESOLVED
-
-IN_PROGRESS -> WAITING_CUSTOMER
-IN_PROGRESS -> RESOLVED
-
-WAITING_CUSTOMER -> IN_PROGRESS
-WAITING_CUSTOMER -> RESOLVED
-
-RESOLVED -> CLOSED
-RESOLVED -> IN_PROGRESS
-
-CLOSED -> IN_PROGRESS, manager/admin only
-```
-
-Closed tickets cannot receive new comments unless reopened.
-
-## SLA calculation
-
-SLA deadlines are calculated when a ticket is created or when priority changes.
-
-Initial default resolution targets:
-
-| Priority | Resolution target |
-|---|---:|
-| LOW | 72 hours |
-| MEDIUM | 48 hours |
-| HIGH | 24 hours |
-| URGENT | 4 hours |
-
-The scheduler marks or reports overdue tickets without silently mutating critical fields unless the action is auditable.
-
-## AI role in the system
-
-AI assists with:
-
-- Suggested category
-- Suggested priority
-- Short explanation of suggestion
-- Optional response draft in later versions
-
-AI does not:
-
-- Automatically close tickets
-- Override human decisions
-- Bypass authorization
-- Become required for ticket creation
-
-If the AI provider fails, ticket creation must still succeed.
-
-## API design principles
-
-- Use RESTful endpoints.
-- Use DTOs for request and response objects.
-- Do not expose entities directly.
-- Use pagination for list endpoints.
-- Use validation annotations for request payloads.
-- Return consistent error responses.
-- Document endpoints with OpenAPI.
-
-## Deployment direction
-
-The MVP should run locally through Docker Compose and be deployable later to a generic VPS or container platform.
-
-The application should keep secrets in environment variables, not in source control.
+- OpenAPI docs are available in `dev` profile through Swagger UI.
+- CI pipeline validates repository structure and runs backend + frontend build/test jobs.
