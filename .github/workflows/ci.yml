@@ -108,3 +108,33 @@ jobs:
       - name: Test frontend
         working-directory: frontend
         run: npm test -- --run
+
+  backend-docker-image:
+    name: Backend Docker image build
+    runs-on: ubuntu-latest
+    needs:
+      - repository-validation
+      - detect-projects
+    if: ${{ needs.detect-projects.outputs.backend_exists == 'true' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: docker build -t resolvehub-backend:ci ./backend
+
+  frontend-docker-image:
+    name: Frontend Docker image build
+    runs-on: ubuntu-latest
+    needs:
+      - repository-validation
+      - detect-projects
+    if: ${{ needs.detect-projects.outputs.frontend_exists == 'true' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build frontend Docker image
+        run: docker build -t resolvehub-frontend:ci ./frontend

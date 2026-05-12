@@ -69,6 +69,8 @@ npm test -- --run
 npm run build
 ```
 
+CI validates application tests, frontend build, and Docker image builds.
+
 ## Docker Compose App Profile
 
 ResolveHub includes `backend` and `frontend` services under the `app` profile:
