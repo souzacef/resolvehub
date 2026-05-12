@@ -1,5 +1,6 @@
 import { apiRequest } from '../../lib/apiClient';
 import type {
+  AuditLogResponse,
   CreateTicketCommentRequest,
   CreateTicketRequest,
   TicketClassificationSuggestion,
@@ -67,4 +68,10 @@ export async function requestTicketAiClassification(
       method: 'POST',
     },
   );
+}
+
+export async function listTicketAuditLogs(
+  ticketId: string,
+): Promise<AuditLogResponse[]> {
+  return apiRequest<AuditLogResponse[]>(`/api/tickets/${ticketId}/audit-logs`);
 }

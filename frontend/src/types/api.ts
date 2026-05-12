@@ -78,3 +78,13 @@ export type TicketClassificationSuggestion = {
   suggestedPriority: TicketPriority;
   reasoning: string;
 };
+
+export type AuditLogResponse = {
+  id: string;
+  organizationId: string;
+  actorId: string | null;
+  ticketId: string | null;
+  action: string;
+  details: string;
+  createdAt: string;
+};

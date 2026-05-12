@@ -4,6 +4,7 @@ import { useAuth } from '../features/auth/AuthContext';
 import {
   createTicketComment,
   getTicket,
+  listTicketAuditLogs,
   listTicketComments,
   requestTicketAiClassification,
   updateTicketAssignee,
@@ -11,6 +12,7 @@ import {
 } from '../features/tickets/tickets';
 import { isApiError } from '../lib/apiClient';
 import type {
+  AuditLogResponse,
   TicketClassificationSuggestion,
   TicketCommentResponse,
   TicketResponse,
@@ -70,6 +72,11 @@ export function TicketDetailPage() {
     useState<TicketClassificationSuggestion | null>(null);
   const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<AuditLogResponse[]>([]);
+  const [auditLogsErrorMessage, setAuditLogsErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [isAuditLogsLoading, setIsAuditLogsLoading] = useState(false);
 
   const canCreateInternalComments =
     role === 'AGENT' || role === 'MANAGER' || role === 'ADMIN';
@@ -104,6 +111,9 @@ export function TicketDetailPage() {
       setAiSuggestion(null);
       setAiErrorMessage(null);
       setIsAiLoading(false);
+      setAuditLogs([]);
+      setAuditLogsErrorMessage(null);
+      setIsAuditLogsLoading(false);
 
       try {
         const data = await getTicket(requiredTicketId);
@@ -181,6 +191,42 @@ export function TicketDetailPage() {
       isMounted = false;
     };
   }, [ticketId, ticket]);
+
+  useEffect(() => {
+    if (!ticketId || !ticket || isCustomer) {
+      return;
+    }
+    const requiredTicketId = ticketId;
+
+    let isMounted = true;
+
+    async function loadAuditLogs() {
+      setIsAuditLogsLoading(true);
+      setAuditLogsErrorMessage(null);
+
+      try {
+        const data = await listTicketAuditLogs(requiredTicketId);
+        if (isMounted) {
+          setAuditLogs(data);
+        }
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+        setAuditLogsErrorMessage(mapAuditLogLoadError(error));
+      } finally {
+        if (isMounted) {
+          setIsAuditLogsLoading(false);
+        }
+      }
+    }
+
+    void loadAuditLogs();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [ticketId, ticket, isCustomer]);
 
   async function handleCommentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -353,6 +399,13 @@ export function TicketDetailPage() {
     return `${authorId.slice(0, 8)}...`;
   }
 
+  function formatActor(actorId: string | null) {
+    if (!actorId) {
+      return 'System';
+    }
+    return `${actorId.slice(0, 8)}...`;
+  }
+
   function mapCommentLoadError(error: unknown): string {
     if (!isApiError(error)) {
       return 'Failed to load comments. Please try again.';
@@ -469,6 +522,26 @@ export function TicketDetailPage() {
     return 'Failed to request AI classification. Please try again.';
   }
 
+  function mapAuditLogLoadError(error: unknown): string {
+    if (!isApiError(error)) {
+      return 'Failed to load audit logs. Please try again.';
+    }
+
+    if (error.kind === 'network') {
+      return 'Backend is unavailable.';
+    }
+
+    if (error.status === 403) {
+      return 'You do not have permission to view audit logs.';
+    }
+
+    if (error.status === 404) {
+      return 'Ticket audit logs were not found.';
+    }
+
+    return 'Failed to load audit logs. Please try again.';
+  }
+
   function getStaffStatusTransitions(currentStatus: TicketStatus): TicketStatus[] {
     return staffStatusTransitions[currentStatus];
   }
@@ -509,6 +582,7 @@ export function TicketDetailPage() {
           assignmentSuccessMessage),
     );
   const showAiClassificationSection = canUseStaffStatusWorkflow;
+  const showAuditLogSection = canUseStaffStatusWorkflow;
 
   return (
     <section>
@@ -796,6 +870,47 @@ export function TicketDetailPage() {
               </div>
               <p className="comment-body">{aiSuggestion.reasoning}</p>
             </article>
+          ) : null}
+        </section>
+      ) : null}
+
+      {!isLoading && !errorMessage && ticket && showAuditLogSection ? (
+        <section className="comments-section">
+          <div className="comments-header">
+            <h2>Audit Log</h2>
+          </div>
+
+          {isAuditLogsLoading ? (
+            <p className="state-panel">Loading audit logs...</p>
+          ) : null}
+          {!isAuditLogsLoading && auditLogsErrorMessage ? (
+            <p className="state-panel state-error" role="alert">
+              {auditLogsErrorMessage}
+            </p>
+          ) : null}
+          {!isAuditLogsLoading &&
+          !auditLogsErrorMessage &&
+          auditLogs.length === 0 ? (
+            <p className="state-panel muted-text">
+              No audit log entries are available for this ticket.
+            </p>
+          ) : null}
+
+          {!isAuditLogsLoading && !auditLogsErrorMessage && auditLogs.length > 0 ? (
+            <div className="comments-list">
+              {auditLogs.map((auditLog) => (
+                <article key={auditLog.id} className="comment-card">
+                  <div className="comment-meta">
+                    <span>
+                      Action: <strong>{auditLog.action}</strong>
+                    </span>
+                    <span>Actor: {formatActor(auditLog.actorId)}</span>
+                    <span>{formatDate(auditLog.createdAt)}</span>
+                  </div>
+                  <p className="comment-body">{auditLog.details}</p>
+                </article>
+              ))}
+            </div>
           ) : null}
         </section>
       ) : null}
