@@ -72,3 +72,9 @@ export type UpdateTicketStatusRequest = {
 export type UpdateTicketAssigneeRequest = {
   assigneeId: string | null;
 };
+
+export type TicketClassificationSuggestion = {
+  suggestedCategory: TicketCategory;
+  suggestedPriority: TicketPriority;
+  reasoning: string;
+};

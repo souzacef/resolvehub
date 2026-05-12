@@ -5,11 +5,13 @@ import {
   createTicketComment,
   getTicket,
   listTicketComments,
+  requestTicketAiClassification,
   updateTicketAssignee,
   updateTicketStatus,
 } from '../features/tickets/tickets';
 import { isApiError } from '../lib/apiClient';
 import type {
+  TicketClassificationSuggestion,
   TicketCommentResponse,
   TicketResponse,
   TicketStatus,
@@ -64,6 +66,10 @@ export function TicketDetailPage() {
     string | null
   >(null);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
+  const [aiSuggestion, setAiSuggestion] =
+    useState<TicketClassificationSuggestion | null>(null);
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const canCreateInternalComments =
     role === 'AGENT' || role === 'MANAGER' || role === 'ADMIN';
@@ -95,6 +101,9 @@ export function TicketDetailPage() {
       setStatusSuccessMessage(null);
       setAssignmentErrorMessage(null);
       setAssignmentSuccessMessage(null);
+      setAiSuggestion(null);
+      setAiErrorMessage(null);
+      setIsAiLoading(false);
 
       try {
         const data = await getTicket(requiredTicketId);
@@ -310,6 +319,25 @@ export function TicketDetailPage() {
     }
   }
 
+  async function handleAiClassificationRequest() {
+    if (!ticketId) {
+      setAiErrorMessage('Ticket id was not provided.');
+      return;
+    }
+
+    setIsAiLoading(true);
+    setAiErrorMessage(null);
+
+    try {
+      const suggestion = await requestTicketAiClassification(ticketId);
+      setAiSuggestion(suggestion);
+    } catch (error) {
+      setAiErrorMessage(mapAiClassificationError(error));
+    } finally {
+      setIsAiLoading(false);
+    }
+  }
+
   function formatDate(value: string) {
     return new Date(value).toLocaleString();
   }
@@ -417,6 +445,30 @@ export function TicketDetailPage() {
     return 'Failed to update assignment. Please try again.';
   }
 
+  function mapAiClassificationError(error: unknown): string {
+    if (!isApiError(error)) {
+      return 'Failed to request AI classification. Please try again.';
+    }
+
+    if (error.kind === 'network') {
+      return 'Backend is unavailable.';
+    }
+
+    if (error.status === 403) {
+      return 'You do not have permission to request AI classification.';
+    }
+
+    if (
+      error.status === 502 ||
+      (typeof error.responseBody === 'string' &&
+        error.responseBody.includes('AI classification provider failed'))
+    ) {
+      return 'AI provider is unavailable. Try again later.';
+    }
+
+    return 'Failed to request AI classification. Please try again.';
+  }
+
   function getStaffStatusTransitions(currentStatus: TicketStatus): TicketStatus[] {
     return staffStatusTransitions[currentStatus];
   }
@@ -456,6 +508,7 @@ export function TicketDetailPage() {
           assignmentErrorMessage ||
           assignmentSuccessMessage),
     );
+  const showAiClassificationSection = canUseStaffStatusWorkflow;
 
   return (
     <section>
@@ -697,6 +750,52 @@ export function TicketDetailPage() {
             <p className="state-panel" role="status">
               {assignmentSuccessMessage}
             </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {!isLoading && !errorMessage && ticket && showAiClassificationSection ? (
+        <section className="comments-section">
+          <div className="comments-header">
+            <h2>AI Classification</h2>
+          </div>
+
+          <div className="comment-form">
+            <p className="muted-text">
+              AI suggestions are advisory and do not automatically change ticket
+              category or priority.
+            </p>
+            <div className="form-actions">
+              <button
+                type="button"
+                onClick={() => void handleAiClassificationRequest()}
+                disabled={isAiLoading}
+              >
+                {isAiLoading
+                  ? 'Requesting AI suggestion...'
+                  : 'Suggest classification with AI'}
+              </button>
+            </div>
+          </div>
+
+          {aiErrorMessage ? (
+            <p className="state-panel state-error" role="alert">
+              {aiErrorMessage}
+            </p>
+          ) : null}
+
+          {aiSuggestion ? (
+            <article className="comment-card">
+              <div className="comment-meta">
+                <span>
+                  Suggested category: <strong>{aiSuggestion.suggestedCategory}</strong>
+                </span>
+                <span>
+                  Suggested priority: <strong>{aiSuggestion.suggestedPriority}</strong>
+                </span>
+              </div>
+              <p className="comment-body">{aiSuggestion.reasoning}</p>
+            </article>
           ) : null}
         </section>
       ) : null}

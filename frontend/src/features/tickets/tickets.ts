@@ -2,6 +2,7 @@ import { apiRequest } from '../../lib/apiClient';
 import type {
   CreateTicketCommentRequest,
   CreateTicketRequest,
+  TicketClassificationSuggestion,
   TicketCommentResponse,
   TicketResponse,
   UpdateTicketAssigneeRequest,
@@ -55,4 +56,15 @@ export async function updateTicketAssignee(
     method: 'PATCH',
     body: payload,
   });
+}
+
+export async function requestTicketAiClassification(
+  ticketId: string,
+): Promise<TicketClassificationSuggestion> {
+  return apiRequest<TicketClassificationSuggestion>(
+    `/api/tickets/${ticketId}/ai/classification`,
+    {
+      method: 'POST',
+    },
+  );
 }
