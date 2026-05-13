@@ -90,7 +90,7 @@ Spring Boot API
 - `organization`
 - `actor` (nullable)
 - `ticket` (nullable)
-- `action` (`TICKET_CREATED`, `TICKET_STATUS_CHANGED`, `TICKET_ASSIGNED`, `TICKET_UNASSIGNED`, `COMMENT_ADDED`)
+- `action` (`TICKET_CREATED`, `TICKET_STATUS_CHANGED`, `TICKET_ASSIGNED`, `TICKET_UNASSIGNED`, `COMMENT_ADDED`, `TICKET_CLASSIFICATION_UPDATED`)
 - `details`
 - `createdAt`
 
@@ -164,14 +164,15 @@ No scheduler persists overdue state in v1.0.0.
 AI classification is explicit and endpoint-driven:
 
 - `POST /api/tickets/{ticketId}/ai/classification`
+- `PATCH /api/tickets/{ticketId}/classification`
 
-Response returns suggestion only:
+Suggestion response returns:
 
 - suggested category
 - suggested priority
 - short reasoning
 
-AI suggestions do not automatically update the ticket.
+Suggestions do not automatically update the ticket. Staff users explicitly apply classification updates through the classification PATCH endpoint.
 
 ## API Documentation and CI
 

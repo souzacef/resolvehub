@@ -80,6 +80,7 @@ docker compose --profile app up --build
 ```
 
 This is useful for containerized local demos. For AI behavior, keep backend provider configuration aligned with current application properties (`fake` or `openai-compatible`).
+The current Compose backend service is configured for `openai-compatible` mode against the local `ollama` service.
 
 ## Environment Variables
 

@@ -7,6 +7,7 @@ ResolveHub uses a provider-agnostic AI classification layer so AI capabilities c
 AI classification is on-demand through:
 
 - `POST /api/tickets/{ticketId}/ai/classification`
+- `PATCH /api/tickets/{ticketId}/classification` (manual apply by staff)
 
 Ticket creation does not call AI.
 
@@ -24,6 +25,7 @@ Ticket creation does not call AI.
 
 - Suggestions are advisory only.
 - Suggestions do not automatically update ticket category or priority.
+- Staff may apply suggested category/priority explicitly through the classification PATCH endpoint.
 - AI provider failures affect only the AI endpoint response.
 - Core ticket flows (create/list/detail/comment/status/assignment) do not depend on AI availability.
 
@@ -103,5 +105,4 @@ If these variables are not set, backend defaults to `fake` provider.
 ## Planned Enhancements
 
 - Persist suggestion history/versioning.
-- Add explicit “apply suggestion” workflow with human approval.
 - Extend prompt controls and provider observability.

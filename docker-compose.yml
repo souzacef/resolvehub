@@ -41,9 +41,11 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/resolvehub
       SPRING_DATASOURCE_USERNAME: resolvehub
       SPRING_DATASOURCE_PASSWORD: resolvehub
-      RESOLVEHUB_AI_PROVIDER: ollama
-      RESOLVEHUB_AI_BASE_URL: http://ollama:11434/v1
-      RESOLVEHUB_AI_MODEL: qwen2.5:7b
+      RESOLVEHUB_AI_PROVIDER: openai-compatible
+      RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL: http://ollama:11434/v1
+      RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY: ollama
+      RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL: llama3.1:8b
+      RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS: 20
     ports:
       - "8080:8080"
     profiles:

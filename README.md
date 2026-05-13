@@ -22,6 +22,8 @@ ResolveHub is a portfolio-ready full-stack customer support ticket platform. It 
 - SLA deadline calculation and overdue detection
 - Ticket audit logs
 - AI-assisted ticket classification (advisory suggestions)
+- Manual apply workflow for AI category/priority suggestions
+- Ticket search and filtering (search, status, priority, category, overdue)
 - Dev demo data seeding
 - CI with GitHub Actions
 
@@ -188,11 +190,11 @@ Current CI jobs:
 - AI provider design: [docs/ai-provider-design.md](docs/ai-provider-design.md)
 - Testing strategy: [docs/testing-strategy.md](docs/testing-strategy.md)
 - Deployment notes: [docs/deployment.md](docs/deployment.md)
+- Release readiness: [docs/v1.0.0-readiness-checklist.md](docs/v1.0.0-readiness-checklist.md)
 
 ## Roadmap
 
-- Organization users endpoint for richer assignment UI
-- Apply-AI-suggestion workflow (manual approval step)
 - Deployment automation / CD
-- Product screenshots and demo walkthrough assets
+- Ticket list pagination and server-side filtering
+- Production-ready frontend/API integration tests
 - Production hardening (observability, secrets management, security controls)
