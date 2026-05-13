@@ -73,6 +73,20 @@ public class AuditLogService {
                 "Comment added with internal=" + internal);
     }
 
+    @Transactional
+    public void logTicketClassificationUpdated(
+            ResolveHubUserPrincipal principal,
+            Ticket ticket,
+            String oldCategory,
+            String newCategory,
+            String oldPriority,
+            String newPriority
+    ) {
+        writeLog(principal, ticket, AuditAction.TICKET_CLASSIFICATION_UPDATED,
+                "Classification changed from category=" + oldCategory + ", priority=" + oldPriority
+                        + " to category=" + newCategory + ", priority=" + newPriority);
+    }
+
     @Transactional(readOnly = true)
     public List<AuditLogResponse> getTicketAuditLogs(ResolveHubUserPrincipal principal, UUID ticketId) {
         requirePrincipal(principal);

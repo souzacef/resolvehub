@@ -8,6 +8,7 @@ import type {
   TicketCommentResponse,
   TicketResponse,
   UpdateTicketAssigneeRequest,
+  UpdateTicketClassificationRequest,
   UpdateTicketStatusRequest,
 } from '../../types/api';
 
@@ -69,6 +70,16 @@ export async function requestTicketAiClassification(
       method: 'POST',
     },
   );
+}
+
+export async function updateTicketClassification(
+  ticketId: string,
+  payload: UpdateTicketClassificationRequest,
+): Promise<TicketResponse> {
+  return apiRequest<TicketResponse>(`/api/tickets/${ticketId}/classification`, {
+    method: 'PATCH',
+    body: payload,
+  });
 }
 
 export async function listTicketAuditLogs(

@@ -11,6 +11,7 @@ import com.resolvehub.ticket.dto.CreateTicketRequest;
 import com.resolvehub.ticket.dto.TicketMapper;
 import com.resolvehub.ticket.dto.TicketResponse;
 import com.resolvehub.ticket.dto.UpdateTicketAssigneeRequest;
+import com.resolvehub.ticket.dto.UpdateTicketClassificationRequest;
 import com.resolvehub.ticket.dto.UpdateTicketStatusRequest;
 import com.resolvehub.ticket.repository.TicketRepository;
 import com.resolvehub.user.domain.Role;
@@ -228,6 +229,46 @@ public class TicketService {
         }
 
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed to assign tickets");
+    }
+
+    @Transactional
+    public TicketResponse updateTicketClassification(
+            ResolveHubUserPrincipal principal,
+            UUID ticketId,
+            UpdateTicketClassificationRequest request
+    ) {
+        requirePrincipal(principal);
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request body is required");
+        }
+
+        Role role = principal.getRole();
+        if (role == Role.CUSTOMER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Customers cannot update ticket classification");
+        }
+        if (role != Role.AGENT && role != Role.MANAGER && role != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed to update ticket classification");
+        }
+
+        Ticket ticket = ticketRepository.findByIdAndOrganizationId(ticketId, principal.getOrganizationId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+
+        String oldCategory = ticket.getCategory().name();
+        String oldPriority = ticket.getPriority().name();
+
+        ticket.setCategory(request.category());
+        ticket.setPriority(request.priority());
+
+        Ticket savedTicket = ticketRepository.save(ticket);
+        auditLogService.logTicketClassificationUpdated(
+                principal,
+                savedTicket,
+                oldCategory,
+                request.category().name(),
+                oldPriority,
+                request.priority().name()
+        );
+        return ticketMapper.toResponse(savedTicket);
     }
 
     @Transactional(readOnly = true)

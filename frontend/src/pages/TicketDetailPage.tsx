@@ -9,6 +9,7 @@ import {
   listTicketComments,
   requestTicketAiClassification,
   updateTicketAssignee,
+  updateTicketClassification,
   updateTicketStatus,
 } from '../features/tickets/tickets';
 import { isApiError } from '../lib/apiClient';
@@ -82,6 +83,11 @@ export function TicketDetailPage() {
     useState<TicketClassificationSuggestion | null>(null);
   const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [classificationApplyErrorMessage, setClassificationApplyErrorMessage] =
+    useState<string | null>(null);
+  const [classificationApplySuccessMessage, setClassificationApplySuccessMessage] =
+    useState<string | null>(null);
+  const [isApplyingAiSuggestion, setIsApplyingAiSuggestion] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditLogResponse[]>([]);
   const [auditLogsErrorMessage, setAuditLogsErrorMessage] = useState<string | null>(
     null,
@@ -138,6 +144,9 @@ export function TicketDetailPage() {
       setAiSuggestion(null);
       setAiErrorMessage(null);
       setIsAiLoading(false);
+      setClassificationApplyErrorMessage(null);
+      setClassificationApplySuccessMessage(null);
+      setIsApplyingAiSuggestion(false);
       setAuditLogs([]);
       setAuditLogsErrorMessage(null);
       setIsAuditLogsLoading(false);
@@ -466,6 +475,8 @@ export function TicketDetailPage() {
 
     setIsAiLoading(true);
     setAiErrorMessage(null);
+    setClassificationApplyErrorMessage(null);
+    setClassificationApplySuccessMessage(null);
 
     try {
       const suggestion = await requestTicketAiClassification(ticketId);
@@ -474,6 +485,41 @@ export function TicketDetailPage() {
       setAiErrorMessage(mapAiClassificationError(error));
     } finally {
       setIsAiLoading(false);
+    }
+  }
+
+  async function handleApplyAiSuggestion() {
+    if (!ticketId) {
+      setClassificationApplyErrorMessage('Ticket id was not provided.');
+      return;
+    }
+    if (!aiSuggestion) {
+      setClassificationApplyErrorMessage(
+        'Request an AI suggestion before applying classification.',
+      );
+      return;
+    }
+
+    setIsApplyingAiSuggestion(true);
+    setClassificationApplyErrorMessage(null);
+    setClassificationApplySuccessMessage(null);
+
+    try {
+      await updateTicketClassification(ticketId, {
+        category: aiSuggestion.suggestedCategory,
+        priority: aiSuggestion.suggestedPriority,
+      });
+
+      const refreshedTicket = await getTicket(ticketId);
+      setTicket(refreshedTicket);
+      setAiSuggestion(null);
+      setClassificationApplySuccessMessage(
+        'AI suggestion applied to ticket classification.',
+      );
+    } catch (error) {
+      setClassificationApplyErrorMessage(mapAiSuggestionApplyError(error));
+    } finally {
+      setIsApplyingAiSuggestion(false);
     }
   }
 
@@ -630,6 +676,30 @@ export function TicketDetailPage() {
     }
 
     return 'Failed to request AI classification. Please try again.';
+  }
+
+  function mapAiSuggestionApplyError(error: unknown): string {
+    if (!isApiError(error)) {
+      return 'Failed to apply AI suggestion. Please try again.';
+    }
+
+    if (error.kind === 'network') {
+      return 'Backend is unavailable.';
+    }
+
+    if (error.status === 403) {
+      return 'You do not have permission to apply ticket classification.';
+    }
+
+    if (error.status === 400) {
+      return 'Invalid classification values were provided.';
+    }
+
+    if (error.status === 404) {
+      return 'Ticket not found for classification update.';
+    }
+
+    return 'Failed to apply AI suggestion. Please try again.';
   }
 
   function mapAuditLogLoadError(error: unknown): string {
@@ -1050,6 +1120,17 @@ export function TicketDetailPage() {
             </p>
           ) : null}
 
+          {classificationApplyErrorMessage ? (
+            <p className="state-panel state-error" role="alert">
+              {classificationApplyErrorMessage}
+            </p>
+          ) : null}
+          {classificationApplySuccessMessage ? (
+            <p className="state-panel" role="status">
+              {classificationApplySuccessMessage}
+            </p>
+          ) : null}
+
           {aiSuggestion ? (
             <article className="comment-card">
               <div className="comment-meta">
@@ -1061,6 +1142,17 @@ export function TicketDetailPage() {
                 </span>
               </div>
               <p className="comment-body">{aiSuggestion.reasoning}</p>
+              <div className="form-actions">
+                <button
+                  type="button"
+                  onClick={() => void handleApplyAiSuggestion()}
+                  disabled={isApplyingAiSuggestion}
+                >
+                  {isApplyingAiSuggestion
+                    ? 'Applying suggestion...'
+                    : 'Apply suggestion'}
+                </button>
+              </div>
             </article>
           ) : null}
         </section>

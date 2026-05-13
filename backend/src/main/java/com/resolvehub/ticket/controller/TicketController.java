@@ -6,6 +6,7 @@ import com.resolvehub.audit.dto.AuditLogResponse;
 import com.resolvehub.ticket.dto.CreateTicketRequest;
 import com.resolvehub.ticket.dto.TicketResponse;
 import com.resolvehub.ticket.dto.UpdateTicketAssigneeRequest;
+import com.resolvehub.ticket.dto.UpdateTicketClassificationRequest;
 import com.resolvehub.ticket.dto.UpdateTicketStatusRequest;
 import com.resolvehub.ticket.service.TicketService;
 import jakarta.validation.Valid;
@@ -90,5 +91,14 @@ public class TicketController {
             @RequestBody UpdateTicketAssigneeRequest request
     ) {
         return ticketService.updateTicketAssignee(principal, id, request);
+    }
+
+    @PatchMapping("/{id}/classification")
+    public TicketResponse updateTicketClassification(
+            @AuthenticationPrincipal ResolveHubUserPrincipal principal,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateTicketClassificationRequest request
+    ) {
+        return ticketService.updateTicketClassification(principal, id, request);
     }
 }
