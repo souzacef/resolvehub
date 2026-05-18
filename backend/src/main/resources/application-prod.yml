@@ -1,0 +1,9 @@
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+resolvehub:
+  seed:
+    demo-enabled: false
