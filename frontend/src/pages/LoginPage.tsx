@@ -7,8 +7,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('admin@resolvehub.dev');
-  const [password, setPassword] = useState('Password123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -28,7 +28,7 @@ export function LoginPage() {
       await login({ email, password });
       navigate(redirectTo, { replace: true });
     } catch {
-      setError('Login failed. Check your credentials and backend availability.');
+      setError('Login failed. Check your credentials or create an account.');
     } finally {
       setIsSubmitting(false);
     }
@@ -45,6 +45,7 @@ export function LoginPage() {
           <input
             id="email"
             type="email"
+            autoComplete="email"
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -54,6 +55,7 @@ export function LoginPage() {
           <input
             id="password"
             type="password"
+            autoComplete="current-password"
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
