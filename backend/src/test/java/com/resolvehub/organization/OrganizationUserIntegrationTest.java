@@ -3,14 +3,19 @@ package com.resolvehub.organization;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.resolvehub.audit.repository.AuditLogRepository;
 import com.resolvehub.common.security.JwtService;
 import com.resolvehub.common.security.ResolveHubUserPrincipal;
 import com.resolvehub.organization.domain.Organization;
+import com.resolvehub.organization.dto.CreateOrganizationUserRequest;
 import com.resolvehub.organization.repository.OrganizationRepository;
 import com.resolvehub.ticket.repository.TicketRepository;
 import com.resolvehub.ticketcomment.repository.TicketCommentRepository;
@@ -22,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -33,6 +39,9 @@ class OrganizationUserIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Autowired
     private TicketCommentRepository ticketCommentRepository;
@@ -139,6 +148,176 @@ class OrganizationUserIntegrationTest {
                         managerA.getEmail()
                 )))
                 .andExpect(jsonPath("$[*].email", not(hasItem(agentB.getEmail()))));
+    }
+
+    @Test
+    void adminCanCreateCustomer() throws Exception {
+        Organization organization = createOrganization("CreateCustomerOrg");
+        User admin = createUser(organization, Role.ADMIN, "admin@createcustomer.org", "Admin");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Customer User",
+                                "customer@createcustomer.org",
+                                "StrongPass123!",
+                                Role.CUSTOMER
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("customer@createcustomer.org"))
+                .andExpect(jsonPath("$.role").value("CUSTOMER"));
+
+        User created = userRepository.findByEmail("customer@createcustomer.org").orElseThrow();
+        assertEquals(organization.getId(), created.getOrganization().getId());
+        assertTrue(passwordEncoder.matches("StrongPass123!", created.getPasswordHash()));
+    }
+
+    @Test
+    void adminCanCreateAgent() throws Exception {
+        Organization organization = createOrganization("CreateAgentOrg");
+        User admin = createUser(organization, Role.ADMIN, "admin@createagent.org", "Admin");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Agent User",
+                                "agent@createagent.org",
+                                "StrongPass123!",
+                                Role.AGENT
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("agent@createagent.org"))
+                .andExpect(jsonPath("$.role").value("AGENT"));
+    }
+
+    @Test
+    void managerCanCreateCustomer() throws Exception {
+        Organization organization = createOrganization("ManagerCustomerOrg");
+        User manager = createUser(organization, Role.MANAGER, "manager@managercustomer.org", "Manager");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(manager))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Customer User",
+                                "customer@managercustomer.org",
+                                "StrongPass123!",
+                                Role.CUSTOMER
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("CUSTOMER"));
+    }
+
+    @Test
+    void managerCanCreateAgent() throws Exception {
+        Organization organization = createOrganization("ManagerAgentOrg");
+        User manager = createUser(organization, Role.MANAGER, "manager@manageragent.org", "Manager");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(manager))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Agent User",
+                                "agent@manageragent.org",
+                                "StrongPass123!",
+                                Role.AGENT
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("AGENT"));
+    }
+
+    @Test
+    void managerCannotCreateAdmin() throws Exception {
+        Organization organization = createOrganization("ManagerAdminOrg");
+        User manager = createUser(organization, Role.MANAGER, "manager@manageradmin.org", "Manager");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(manager))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Admin User",
+                                "admin@manageradmin.org",
+                                "StrongPass123!",
+                                Role.ADMIN
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void agentCannotCreateUsers() throws Exception {
+        Organization organization = createOrganization("AgentNoCreateOrg");
+        User agent = createUser(organization, Role.AGENT, "agent@nocreate.org", "Agent");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(agent))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Customer User",
+                                "customer@nocreate.org",
+                                "StrongPass123!",
+                                Role.CUSTOMER
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void customerCannotCreateUsers() throws Exception {
+        Organization organization = createOrganization("CustomerNoCreateOrg");
+        User customer = createUser(organization, Role.CUSTOMER, "customer@nocreate.org", "Customer");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(customer))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Agent User",
+                                "agent@nocreate.org",
+                                "StrongPass123!",
+                                Role.AGENT
+                        ))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void duplicateEmailReturnsConflict() throws Exception {
+        Organization organization = createOrganization("DuplicateOrg");
+        User admin = createUser(organization, Role.ADMIN, "admin@duplicate.org", "Admin");
+
+        createUser(organization, Role.CUSTOMER, "taken@duplicate.org", "Taken User");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "New User",
+                                "taken@duplicate.org",
+                                "StrongPass123!",
+                                Role.CUSTOMER
+                        ))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void createdUserBelongsToCurrentUsersOrganization() throws Exception {
+        Organization orgA = createOrganization("OrgA");
+        createOrganization("OrgB");
+
+        User adminA = createUser(orgA, Role.ADMIN, "admin@orga.org", "Admin A");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(adminA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Scoped User",
+                                "scoped@orga.org",
+                                "StrongPass123!",
+                                Role.AGENT
+                        ))))
+                .andExpect(status().isCreated());
+
+        User created = userRepository.findByEmail("scoped@orga.org").orElseThrow();
+        assertEquals(orgA.getId(), created.getOrganization().getId());
     }
 
     private Organization createOrganization(String name) {

@@ -7,13 +7,17 @@ export type TicketStats = {
   highUrgent: number;
 };
 
+function isActiveTicket(ticket: TicketResponse): boolean {
+  return ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED';
+}
+
 export function computeTicketStats(tickets: TicketResponse[]): TicketStats {
   const overdue = tickets.filter((ticket) => ticket.overdue).length;
-  const open = tickets.filter(
-    (ticket) => ticket.status !== 'RESOLVED' && ticket.status !== 'CLOSED',
-  ).length;
+  const open = tickets.filter((ticket) => isActiveTicket(ticket)).length;
   const highUrgent = tickets.filter(
-    (ticket) => ticket.priority === 'HIGH' || ticket.priority === 'URGENT',
+    (ticket) =>
+      isActiveTicket(ticket) &&
+      (ticket.priority === 'HIGH' || ticket.priority === 'URGENT'),
   ).length;
 
   return {

@@ -6,7 +6,7 @@ import { computeTicketStats } from '../lib/ticketStats';
 import type { TicketResponse } from '../types/api';
 
 export function DashboardPage() {
-  const { canCreateTickets } = useAuth();
+  const { canCreateTickets, role } = useAuth();
   const [tickets, setTickets] = useState<TicketResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,6 +42,16 @@ export function DashboardPage() {
     return computeTicketStats(tickets);
   }, [tickets]);
 
+  const isCustomer = role === 'CUSTOMER';
+
+  const customerResolvedCount = useMemo(
+    () =>
+      tickets.filter(
+        (ticket) => ticket.status === 'RESOLVED' || ticket.status === 'CLOSED',
+      ).length,
+    [tickets],
+  );
+
   return (
     <section>
       <header className="page-header">
@@ -73,7 +83,7 @@ export function DashboardPage() {
 
       <div className="stats-grid">
         <article className="stat-card">
-          <h2>Total tickets</h2>
+          <h2>{isCustomer ? 'My tickets' : 'Total tickets'}</h2>
           <strong>{stats.total}</strong>
         </article>
         <article className="stat-card">
@@ -81,11 +91,11 @@ export function DashboardPage() {
           <strong>{stats.open}</strong>
         </article>
         <article className="stat-card">
-          <h2>Overdue tickets</h2>
-          <strong>{stats.overdue}</strong>
+          <h2>{isCustomer ? 'Resolved tickets' : 'Overdue tickets'}</h2>
+          <strong>{isCustomer ? customerResolvedCount : stats.overdue}</strong>
         </article>
         <article className="stat-card">
-          <h2>High/Urgent priority</h2>
+          <h2>{isCustomer ? 'High/Urgent tickets' : 'High/Urgent priority'}</h2>
           <strong>{stats.highUrgent}</strong>
         </article>
       </div>

@@ -281,7 +281,7 @@ export function TicketsPage() {
                 <th>Category</th>
                 {showAssigneeColumn ? <th>Assignee</th> : null}
                 <th>{isCustomer ? 'Expected response by' : 'SLA due at'}</th>
-                <th>{isCustomer ? 'SLA status' : 'Overdue'}</th>
+                <th>{isCustomer ? 'Response status' : 'Overdue'}</th>
               </tr>
             </thead>
             <tbody>
@@ -299,7 +299,7 @@ export function TicketsPage() {
                   <td>{new Date(ticket.slaDueAt).toLocaleString()}</td>
                   <td>
                     {isCustomer ? (
-                      ticket.overdue ? 'Overdue' : 'On track'
+                      ticket.overdue ? 'Past expected response' : 'On track'
                     ) : (
                       <span
                         className={

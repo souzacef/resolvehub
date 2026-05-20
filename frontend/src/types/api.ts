@@ -114,3 +114,10 @@ export type OrganizationUserResponse = {
   email: string;
   role: UserRole;
 };
+
+export type CreateOrganizationUserRequest = {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+};

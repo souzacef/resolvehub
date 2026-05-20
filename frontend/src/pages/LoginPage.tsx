@@ -1,11 +1,16 @@
 import { FormEvent, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
+import { isApiError } from '../lib/apiClient';
+
+const SERVICE_UNAVAILABLE_MESSAGE =
+  'Service is unavailable. Please try again later.';
+const LOGIN_FAILED_MESSAGE =
+  'Login failed. Check your credentials or create an account.';
 
 export function LoginPage() {
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,9 +21,6 @@ export function LoginPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const redirectTo =
-    (location.state as { from?: string } | undefined)?.from ?? '/dashboard';
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
@@ -26,9 +28,17 @@ export function LoginPage() {
 
     try {
       await login({ email, password });
-      navigate(redirectTo, { replace: true });
-    } catch {
-      setError('Login failed. Check your credentials or create an account.');
+      navigate('/dashboard', { replace: true });
+    } catch (submitError) {
+      if (!isApiError(submitError)) {
+        setError(SERVICE_UNAVAILABLE_MESSAGE);
+      } else if (submitError.kind === 'network') {
+        setError(SERVICE_UNAVAILABLE_MESSAGE);
+      } else if (submitError.status !== null && submitError.status >= 500) {
+        setError(SERVICE_UNAVAILABLE_MESSAGE);
+      } else {
+        setError(LOGIN_FAILED_MESSAGE);
+      }
     } finally {
       setIsSubmitting(false);
     }

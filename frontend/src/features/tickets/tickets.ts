@@ -1,6 +1,7 @@
 import { apiRequest } from '../../lib/apiClient';
 import type {
   AuditLogResponse,
+  CreateOrganizationUserRequest,
   CreateTicketCommentRequest,
   CreateTicketRequest,
   OrganizationUserResponse,
@@ -90,4 +91,13 @@ export async function listTicketAuditLogs(
 
 export async function listOrganizationUsers(): Promise<OrganizationUserResponse[]> {
   return apiRequest<OrganizationUserResponse[]>('/api/organization/users');
+}
+
+export async function createOrganizationUser(
+  payload: CreateOrganizationUserRequest,
+): Promise<OrganizationUserResponse> {
+  return apiRequest<OrganizationUserResponse>('/api/organization/users', {
+    method: 'POST',
+    body: payload,
+  });
 }

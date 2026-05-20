@@ -22,12 +22,12 @@ function ticket(overrides: Partial<TicketResponse>): TicketResponse {
 }
 
 describe('computeTicketStats', () => {
-  it('counts total, open, overdue, and high/urgent tickets correctly', () => {
+  it('counts total, open, overdue, and active high/urgent tickets correctly', () => {
     const stats = computeTicketStats([
       ticket({ id: 't1', status: 'OPEN', overdue: false, priority: 'URGENT' }),
       ticket({ id: 't2', status: 'IN_PROGRESS', overdue: true, priority: 'HIGH' }),
-      ticket({ id: 't3', status: 'RESOLVED', overdue: true, priority: 'MEDIUM' }),
-      ticket({ id: 't4', status: 'CLOSED', overdue: false, priority: 'LOW' }),
+      ticket({ id: 't3', status: 'RESOLVED', overdue: true, priority: 'URGENT' }),
+      ticket({ id: 't4', status: 'CLOSED', overdue: false, priority: 'HIGH' }),
     ]);
 
     expect(stats).toEqual({

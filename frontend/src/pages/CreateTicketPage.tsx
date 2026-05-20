@@ -62,7 +62,7 @@ export function CreateTicketPage() {
       if (isApiError(error)) {
         if (error.kind === 'network') {
           setSubmitError(
-            'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.',
+            'Service is unavailable. Please try again later.',
           );
         } else if (error.status === 403) {
           setSubmitError('Only customers can create support tickets.');

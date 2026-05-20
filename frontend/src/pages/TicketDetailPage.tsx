@@ -164,7 +164,7 @@ export function TicketDetailPage() {
         if (isApiError(error)) {
           if (error.kind === 'network') {
             setErrorMessage(
-              'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.',
+              'Service is unavailable. Please try again later.',
             );
           } else if (error.status === 403) {
             setErrorMessage(
@@ -568,7 +568,7 @@ export function TicketDetailPage() {
     }
 
     if (error.kind === 'network') {
-      return 'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.';
+      return 'Service is unavailable. Please try again later.';
     }
 
     if (error.status === 403) {
@@ -588,7 +588,7 @@ export function TicketDetailPage() {
     }
 
     if (error.kind === 'network') {
-      return 'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.';
+      return 'Service is unavailable. Please try again later.';
     }
 
     if (error.status === 403) {
@@ -612,7 +612,7 @@ export function TicketDetailPage() {
     }
 
     if (error.kind === 'network') {
-      return 'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.';
+      return 'Service is unavailable. Please try again later.';
     }
 
     if (error.status === 400) {
@@ -636,7 +636,7 @@ export function TicketDetailPage() {
     }
 
     if (error.kind === 'network') {
-      return 'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.';
+      return 'Service is unavailable. Please try again later.';
     }
 
     if (error.status === 403) {
@@ -660,7 +660,7 @@ export function TicketDetailPage() {
     }
 
     if (error.kind === 'network') {
-      return 'Backend is unavailable.';
+      return 'Service is unavailable. Please try again later.';
     }
 
     if (error.status === 403) {
@@ -684,7 +684,7 @@ export function TicketDetailPage() {
     }
 
     if (error.kind === 'network') {
-      return 'Backend is unavailable.';
+      return 'Service is unavailable. Please try again later.';
     }
 
     if (error.status === 403) {
@@ -708,7 +708,7 @@ export function TicketDetailPage() {
     }
 
     if (error.kind === 'network') {
-      return 'Backend is unavailable.';
+      return 'Service is unavailable. Please try again later.';
     }
 
     if (error.status === 403) {
@@ -728,7 +728,7 @@ export function TicketDetailPage() {
     }
 
     if (error.kind === 'network') {
-      return 'Cannot reach backend. Verify API availability and VITE_API_BASE_URL.';
+      return 'Service is unavailable. Please try again later.';
     }
 
     if (error.status === 403) {
@@ -840,10 +840,10 @@ export function TicketDetailPage() {
               <dd>{formatDate(ticket.slaDueAt)}</dd>
             </div>
             <div className="detail-field">
-              <dt>{isCustomer ? 'SLA status' : 'Overdue'}</dt>
+              <dt>{isCustomer ? 'Response status' : 'Overdue'}</dt>
               <dd>
                 {isCustomer ? (
-                  ticket.overdue ? 'Overdue' : 'On track'
+                  ticket.overdue ? 'Past expected response' : 'On track'
                 ) : (
                   <span
                     className={
