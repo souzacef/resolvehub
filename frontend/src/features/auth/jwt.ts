@@ -1,8 +1,10 @@
 import type { UserRole } from '../../types/api';
 
 type JwtPayload = {
+  sub?: unknown;
   role?: unknown;
   uid?: unknown;
+  oid?: unknown;
 };
 
 const roles: UserRole[] = ['CUSTOMER', 'AGENT', 'MANAGER', 'ADMIN'];
@@ -31,6 +33,32 @@ export function extractUserIdFromJwt(token: string | null): string | null {
   }
 
   return parsed.uid.trim();
+}
+
+export function extractOrganizationIdFromJwt(token: string | null): string | null {
+  const parsed = parsePayload(token);
+  if (!parsed) {
+    return null;
+  }
+
+  if (typeof parsed.oid !== 'string' || parsed.oid.trim().length === 0) {
+    return null;
+  }
+
+  return parsed.oid.trim();
+}
+
+export function extractEmailFromJwt(token: string | null): string | null {
+  const parsed = parsePayload(token);
+  if (!parsed) {
+    return null;
+  }
+
+  if (typeof parsed.sub !== 'string' || parsed.sub.trim().length === 0) {
+    return null;
+  }
+
+  return parsed.sub.trim();
 }
 
 function parsePayload(token: string | null): JwtPayload | null {

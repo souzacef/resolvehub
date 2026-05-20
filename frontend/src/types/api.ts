@@ -3,10 +3,24 @@ export type LoginRequest = {
   password: string;
 };
 
+export type RegisterRequest = {
+  organizationName: string;
+  name: string;
+  email: string;
+  password: string;
+};
+
 export type AuthResponse = {
   accessToken: string;
   tokenType: string;
   expiresInSeconds: number;
+};
+
+export type RegisterResponse = {
+  organizationId: string;
+  userId: string;
+  email: string;
+  role: UserRole;
 };
 
 export type UserRole = 'CUSTOMER' | 'AGENT' | 'MANAGER' | 'ADMIN';

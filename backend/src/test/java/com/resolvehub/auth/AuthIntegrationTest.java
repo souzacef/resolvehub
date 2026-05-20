@@ -1,5 +1,7 @@
 package com.resolvehub.auth;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -61,7 +64,7 @@ class AuthIntegrationTest {
     }
 
     @Test
-    void registerCreatesOrganizationAndAdminUserWithHashedPassword() throws Exception {
+    void registerEndpointIsPublicAndNotRejectedWithForbidden() throws Exception {
         RegisterRequest request = new RegisterRequest(
                 "Acme Corp",
                 "Alice Admin",
@@ -84,7 +87,7 @@ class AuthIntegrationTest {
     }
 
     @Test
-    void registerWithDuplicateEmailReturnsConflict() throws Exception {
+    void duplicateEmailReturnsConflictWithUsefulError() throws Exception {
         RegisterRequest request = new RegisterRequest(
                 "Acme Corp",
                 "Alice Admin",
@@ -107,11 +110,25 @@ class AuthIntegrationTest {
                                         "StrongPass456!"
                                 )
                         )))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(result -> {
+                    String responseBody = result.getResponse().getContentAsString();
+                    Throwable resolvedException = result.getResolvedException();
+
+                    boolean bodyContainsMessage = responseBody != null
+                            && responseBody.toLowerCase().contains("email already registered");
+                    boolean exceptionContainsMessage = resolvedException instanceof ResponseStatusException ex
+                            && "Email already registered".equals(ex.getReason());
+
+                    assertTrue(
+                            bodyContainsMessage || exceptionContainsMessage,
+                            "Expected duplicate-email error details in response body or resolved exception"
+                    );
+                });
     }
 
     @Test
-    void loginReturnsJwtForValidCredentials() throws Exception {
+    void loginEndpointIsPublicAndNotRejectedWithForbidden() throws Exception {
         RegisterRequest registerRequest = new RegisterRequest(
                 "Gamma Corp",
                 "Gina Admin",
@@ -155,5 +172,17 @@ class AuthIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidLoginRequest)))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void protectedEndpointStillRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/tickets"))
+                .andExpect(result -> {
+                    int statusCode = result.getResponse().getStatus();
+                    assertTrue(
+                            statusCode == 401 || statusCode == 403,
+                            "Expected protected endpoint to require authentication"
+                    );
+                });
     }
 }

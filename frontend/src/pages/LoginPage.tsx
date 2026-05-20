@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 
 export function LoginPage() {
@@ -67,6 +67,10 @@ export function LoginPage() {
             {isSubmitting ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
+
+        <p className="muted-text" style={{ marginTop: '1rem' }}>
+          New to ResolveHub? <Link to="/register">Create an account</Link>
+        </p>
       </div>
     </div>
   );
