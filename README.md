@@ -2,6 +2,14 @@
 
 ResolveHub is a portfolio-ready full-stack customer support ticket platform. It demonstrates backend architecture, security, product workflows, testing discipline, and deployment readiness.
 
+## Live Demo
+
+- Frontend: https://resolvehub-frontend.onrender.com
+- Backend health: https://resolvehub-0ssp.onrender.com/actuator/health
+- API docs: https://resolvehub-0ssp.onrender.com/swagger-ui/index.html
+
+Note: the hosted backend may take a moment to wake up on the first request.
+
 ## What This Project Demonstrates
 
 - Organization-based multi-tenancy
