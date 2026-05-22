@@ -383,7 +383,17 @@ public class TicketService {
             return;
         }
 
-        if (role == Role.AGENT || role == Role.MANAGER || role == Role.ADMIN) {
+        if (role == Role.MANAGER || role == Role.ADMIN) {
+            return;
+        }
+
+        if (role == Role.AGENT) {
+            if (ticket.getAssignee() == null || !ticket.getAssignee().getId().equals(principal.getUserId())) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Agents can only update status of tickets assigned to themselves"
+                );
+            }
             return;
         }
 

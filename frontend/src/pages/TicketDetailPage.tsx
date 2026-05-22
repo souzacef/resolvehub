@@ -96,11 +96,15 @@ export function TicketDetailPage() {
 
   const canCreateInternalComments =
     role === 'AGENT' || role === 'MANAGER' || role === 'ADMIN';
-  const canUseStaffStatusWorkflow =
+  const canUseStaffTools =
     role === 'AGENT' || role === 'MANAGER' || role === 'ADMIN';
   const canManageAssignments = role === 'ADMIN' || role === 'MANAGER';
   const canUseAgentSelfAssignment = role === 'AGENT' && Boolean(userId);
   const isCustomer = role === 'CUSTOMER';
+  const canUseStaffStatusWorkflow =
+    role === 'MANAGER' ||
+    role === 'ADMIN' ||
+    Boolean(role === 'AGENT' && ticket && userId && ticket.assigneeId === userId);
 
   const organizationUsersById = useMemo(() => {
     const usersById = new Map<string, OrganizationUserResponse>();
@@ -777,8 +781,8 @@ export function TicketDetailPage() {
           assignmentErrorMessage ||
           assignmentSuccessMessage),
     );
-  const showAiClassificationSection = canUseStaffStatusWorkflow;
-  const showAuditLogSection = canUseStaffStatusWorkflow;
+  const showAiClassificationSection = canUseStaffTools;
+  const showAuditLogSection = canUseStaffTools;
 
   const isClosedTicket = ticket?.status === 'CLOSED';
   const canSubmitStaffAssignment =

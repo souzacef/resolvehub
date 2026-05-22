@@ -115,6 +115,7 @@ class TicketSlaIntegrationTest {
         User agent = createUser(organization, Role.AGENT, "agent@status.org", "Agent");
 
         TicketResponse created = createTicket(organization, customer, TicketPriority.HIGH, "Status SLA");
+        assignTicketToUser(created.id(), agent);
 
         MvcResult result = mockMvc.perform(patch("/api/tickets/{id}/status", created.id())
                         .header("Authorization", bearerToken(agent))
@@ -146,6 +147,13 @@ class TicketSlaIntegrationTest {
 
         TicketResponse updated = objectMapper.readValue(result.getResponse().getContentAsString(), TicketResponse.class);
         assertSameInstantWithinTolerance(created.slaDueAt(), updated.slaDueAt(), Duration.ofSeconds(1));
+    }
+
+    private void assignTicketToUser(java.util.UUID ticketId, User assignee) {
+        var ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalStateException("Ticket not found for assignment in test"));
+        ticket.setAssignee(assignee);
+        ticketRepository.save(ticket);
     }
 
     private TicketResponse createTicketWithPriority(TicketPriority priority) throws Exception {

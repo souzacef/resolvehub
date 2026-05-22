@@ -104,6 +104,7 @@ class TicketAuditLogIntegrationTest {
         User manager = createUser(org, Role.MANAGER, "manager@beta.com", "Manager");
 
         TicketResponse ticket = createTicketViaApi(customer, TicketPriority.MEDIUM, "Status audit test");
+        assignTicketToUser(ticket.id(), agent);
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.id())
                         .header("Authorization", bearerToken(agent))
@@ -270,6 +271,13 @@ class TicketAuditLogIntegrationTest {
                 .andReturn();
 
         return objectMapper.readValue(result.getResponse().getContentAsString(), TicketResponse.class);
+    }
+
+    private void assignTicketToUser(java.util.UUID ticketId, User assignee) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalStateException("Ticket not found for assignment in test"));
+        ticket.setAssignee(assignee);
+        ticketRepository.save(ticket);
     }
 
     private Organization createOrganization(String name) {

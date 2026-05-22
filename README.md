@@ -7,6 +7,7 @@ ResolveHub is a portfolio-ready full-stack customer support ticket platform. It 
 - Frontend: https://resolvehub-frontend.onrender.com
 - Backend health: https://resolvehub-0ssp.onrender.com/actuator/health
 - API docs: https://resolvehub-0ssp.onrender.com/swagger-ui/index.html
+- Hosted demo data guide: [docs/demo-data.md](docs/demo-data.md)
 
 Note: the hosted backend may take a moment to wake up on the first request.
 
@@ -194,6 +195,7 @@ Current CI jobs:
 
 ## Documentation
 
+- Demo data setup: [docs/demo-data.md](docs/demo-data.md)
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - AI provider design: [docs/ai-provider-design.md](docs/ai-provider-design.md)
 - Testing strategy: [docs/testing-strategy.md](docs/testing-strategy.md)

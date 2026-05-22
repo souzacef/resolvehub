@@ -73,11 +73,40 @@ class TicketStatusWorkflowIntegrationTest {
     }
 
     @Test
-    void agentCanMoveOpenToInProgress() throws Exception {
+    void agentCannotUpdateStatusOfUnassignedTicket() throws Exception {
         Organization org = createOrganization("Acme");
         User customer = createUser(org, Role.CUSTOMER, "customer@acme.com", "Customer");
         User agent = createUser(org, Role.AGENT, "agent@acme.com", "Agent");
-        Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Status change");
+        Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Unassigned status change");
+
+        mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
+                        .header("Authorization", bearerToken(agent))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateTicketStatusRequest(TicketStatus.IN_PROGRESS))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void agentCannotUpdateStatusOfTicketAssignedToAnotherUser() throws Exception {
+        Organization org = createOrganization("Beta");
+        User customer = createUser(org, Role.CUSTOMER, "customer@beta.com", "Customer");
+        User agent = createUser(org, Role.AGENT, "agent@beta.com", "Agent");
+        User otherAgent = createUser(org, Role.AGENT, "other-agent@beta.com", "Other Agent");
+        Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Assigned elsewhere", otherAgent);
+
+        mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
+                        .header("Authorization", bearerToken(agent))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateTicketStatusRequest(TicketStatus.IN_PROGRESS))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void agentCanUpdateStatusOfTicketAssignedToThemselves() throws Exception {
+        Organization org = createOrganization("Gamma");
+        User customer = createUser(org, Role.CUSTOMER, "customer@gamma.com", "Customer");
+        User agent = createUser(org, Role.AGENT, "agent@gamma.com", "Agent");
+        Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Self-assigned status", agent);
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
                         .header("Authorization", bearerToken(agent))
@@ -88,11 +117,11 @@ class TicketStatusWorkflowIntegrationTest {
     }
 
     @Test
-    void agentCanMoveInProgressToWaitingCustomer() throws Exception {
-        Organization org = createOrganization("Beta");
-        User customer = createUser(org, Role.CUSTOMER, "customer@beta.com", "Customer");
-        User agent = createUser(org, Role.AGENT, "agent@beta.com", "Agent");
-        Ticket ticket = createTicket(org, customer, TicketStatus.IN_PROGRESS, "Waiting state");
+    void agentCanMoveInProgressToWaitingCustomerWhenAssignedToSelf() throws Exception {
+        Organization org = createOrganization("Delta");
+        User customer = createUser(org, Role.CUSTOMER, "customer@delta.com", "Customer");
+        User agent = createUser(org, Role.AGENT, "agent@delta.com", "Agent");
+        Ticket ticket = createTicket(org, customer, TicketStatus.IN_PROGRESS, "Waiting state", agent);
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
                         .header("Authorization", bearerToken(agent))
@@ -103,11 +132,11 @@ class TicketStatusWorkflowIntegrationTest {
     }
 
     @Test
-    void agentCanMoveInProgressToResolved() throws Exception {
-        Organization org = createOrganization("Gamma");
-        User customer = createUser(org, Role.CUSTOMER, "customer@gamma.com", "Customer");
-        User agent = createUser(org, Role.AGENT, "agent@gamma.com", "Agent");
-        Ticket ticket = createTicket(org, customer, TicketStatus.IN_PROGRESS, "Resolve issue");
+    void agentCanMoveInProgressToResolvedWhenAssignedToSelf() throws Exception {
+        Organization org = createOrganization("Epsilon");
+        User customer = createUser(org, Role.CUSTOMER, "customer@epsilon.com", "Customer");
+        User agent = createUser(org, Role.AGENT, "agent@epsilon.com", "Agent");
+        Ticket ticket = createTicket(org, customer, TicketStatus.IN_PROGRESS, "Resolve issue", agent);
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
                         .header("Authorization", bearerToken(agent))
@@ -118,11 +147,11 @@ class TicketStatusWorkflowIntegrationTest {
     }
 
     @Test
-    void managerAndAdminCanCloseTicketsInTheirOrganization() throws Exception {
-        Organization org = createOrganization("Delta");
-        User customer = createUser(org, Role.CUSTOMER, "customer@delta.com", "Customer");
-        User manager = createUser(org, Role.MANAGER, "manager@delta.com", "Manager");
-        User admin = createUser(org, Role.ADMIN, "admin@delta.com", "Admin");
+    void managerAndAdminCanUpdateStatusForOrganizationTicket() throws Exception {
+        Organization org = createOrganization("Zeta");
+        User customer = createUser(org, Role.CUSTOMER, "customer@zeta.com", "Customer");
+        User manager = createUser(org, Role.MANAGER, "manager@zeta.com", "Manager");
+        User admin = createUser(org, Role.ADMIN, "admin@zeta.com", "Admin");
 
         Ticket managerTicket = createTicket(org, customer, TicketStatus.OPEN, "Manager close");
         Ticket adminTicket = createTicket(org, customer, TicketStatus.RESOLVED, "Admin close");
@@ -144,8 +173,8 @@ class TicketStatusWorkflowIntegrationTest {
 
     @Test
     void customerCanCloseOwnOpenTicket() throws Exception {
-        Organization org = createOrganization("Epsilon");
-        User customer = createUser(org, Role.CUSTOMER, "customer@epsilon.com", "Customer");
+        Organization org = createOrganization("Eta");
+        User customer = createUser(org, Role.CUSTOMER, "customer@eta.com", "Customer");
         Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Close own ticket");
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
@@ -158,8 +187,8 @@ class TicketStatusWorkflowIntegrationTest {
 
     @Test
     void customerCanReopenOwnResolvedTicketToInProgress() throws Exception {
-        Organization org = createOrganization("Zeta");
-        User customer = createUser(org, Role.CUSTOMER, "customer@zeta.com", "Customer");
+        Organization org = createOrganization("Theta");
+        User customer = createUser(org, Role.CUSTOMER, "customer@theta.com", "Customer");
         Ticket ticket = createTicket(org, customer, TicketStatus.RESOLVED, "Reopen own resolved");
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
@@ -172,8 +201,8 @@ class TicketStatusWorkflowIntegrationTest {
 
     @Test
     void customerCannotMoveTicketToResolved() throws Exception {
-        Organization org = createOrganization("Eta");
-        User customer = createUser(org, Role.CUSTOMER, "customer@eta.com", "Customer");
+        Organization org = createOrganization("Iota");
+        User customer = createUser(org, Role.CUSTOMER, "customer@iota.com", "Customer");
         Ticket ticket = createTicket(org, customer, TicketStatus.IN_PROGRESS, "Unauthorized transition");
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
@@ -185,10 +214,10 @@ class TicketStatusWorkflowIntegrationTest {
 
     @Test
     void invalidTransitionReturnsBadRequest() throws Exception {
-        Organization org = createOrganization("Theta");
-        User customer = createUser(org, Role.CUSTOMER, "customer@theta.com", "Customer");
-        User agent = createUser(org, Role.AGENT, "agent@theta.com", "Agent");
-        Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Invalid workflow");
+        Organization org = createOrganization("Kappa");
+        User customer = createUser(org, Role.CUSTOMER, "customer@kappa.com", "Customer");
+        User agent = createUser(org, Role.AGENT, "agent@kappa.com", "Agent");
+        Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Invalid workflow", agent);
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
                         .header("Authorization", bearerToken(agent))
@@ -199,10 +228,10 @@ class TicketStatusWorkflowIntegrationTest {
 
     @Test
     void closedTicketCannotBeReopened() throws Exception {
-        Organization org = createOrganization("Iota");
-        User customer = createUser(org, Role.CUSTOMER, "customer@iota.com", "Customer");
-        User agent = createUser(org, Role.AGENT, "agent@iota.com", "Agent");
-        Ticket ticket = createTicket(org, customer, TicketStatus.CLOSED, "Closed ticket");
+        Organization org = createOrganization("Lambda");
+        User customer = createUser(org, Role.CUSTOMER, "customer@lambda.com", "Customer");
+        User agent = createUser(org, Role.AGENT, "agent@lambda.com", "Agent");
+        Ticket ticket = createTicket(org, customer, TicketStatus.CLOSED, "Closed ticket", agent);
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
                         .header("Authorization", bearerToken(agent))
@@ -222,16 +251,16 @@ class TicketStatusWorkflowIntegrationTest {
         mockMvc.perform(patch("/api/tickets/{id}/status", ticketB.getId())
                         .header("Authorization", bearerToken(agentA))
                         .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new UpdateTicketStatusRequest(TicketStatus.IN_PROGRESS))))
+                        .content(objectMapper.writeValueAsString(new UpdateTicketStatusRequest(TicketStatus.IN_PROGRESS))))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void missingStatusReturnsValidationError() throws Exception {
-        Organization org = createOrganization("Kappa");
-        User customer = createUser(org, Role.CUSTOMER, "customer@kappa.com", "Customer");
-        User agent = createUser(org, Role.AGENT, "agent@kappa.com", "Agent");
-        Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Missing status field");
+        Organization org = createOrganization("Mu");
+        User customer = createUser(org, Role.CUSTOMER, "customer@mu.com", "Customer");
+        User agent = createUser(org, Role.AGENT, "agent@mu.com", "Agent");
+        Ticket ticket = createTicket(org, customer, TicketStatus.OPEN, "Missing status field", agent);
 
         mockMvc.perform(patch("/api/tickets/{id}/status", ticket.getId())
                         .header("Authorization", bearerToken(agent))
@@ -259,9 +288,20 @@ class TicketStatusWorkflowIntegrationTest {
     }
 
     private Ticket createTicket(Organization organization, User requester, TicketStatus status, String title) {
+        return createTicket(organization, requester, status, title, null);
+    }
+
+    private Ticket createTicket(
+            Organization organization,
+            User requester,
+            TicketStatus status,
+            String title,
+            User assignee
+    ) {
         Ticket ticket = new Ticket();
         ticket.setOrganization(organization);
         ticket.setRequester(requester);
+        ticket.setAssignee(assignee);
         ticket.setTitle(title);
         ticket.setDescription("Description for " + title);
         ticket.setStatus(status);
