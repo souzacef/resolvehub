@@ -75,21 +75,14 @@ class TicketIntegrationTest {
     }
 
     @Test
-    void customerCanCreateTicket() throws Exception {
+    void customerCanCreateTicketForSelf() throws Exception {
         Organization organization = createOrganization("Acme");
         User customer = createUser(organization, Role.CUSTOMER, "customer@acme.com", "Customer One");
-
-        CreateTicketRequest request = new CreateTicketRequest(
-                "Cannot login",
-                "I cannot access my account after password reset",
-                TicketPriority.HIGH,
-                TicketCategory.TECHNICAL
-        );
 
         mockMvc.perform(post("/api/tickets")
                         .header("Authorization", bearerToken(customer))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Cannot login", TicketPriority.HIGH, TicketCategory.TECHNICAL, null))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.organizationId").value(organization.getId().toString()))
@@ -101,10 +94,105 @@ class TicketIntegrationTest {
     }
 
     @Test
-    void customerCanOnlyListAndViewOwnTickets() throws Exception {
+    void customerCannotCreateTicketForAnotherUser() throws Exception {
         Organization organization = createOrganization("Beta");
         User customerA = createUser(organization, Role.CUSTOMER, "a@beta.com", "Customer A");
         User customerB = createUser(organization, Role.CUSTOMER, "b@beta.com", "Customer B");
+
+        mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(customerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Other user issue", TicketPriority.MEDIUM, TicketCategory.ACCOUNT, customerB.getId()))))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void agentCanCreateTicketForCustomerInSameOrganization() throws Exception {
+        Organization organization = createOrganization("Gamma");
+        User agent = createUser(organization, Role.AGENT, "agent@gamma.com", "Agent");
+        User customer = createUser(organization, Role.CUSTOMER, "customer@gamma.com", "Customer");
+
+        mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(agent))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Phone support issue", TicketPriority.HIGH, TicketCategory.TECHNICAL, customer.getId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.requesterId").value(customer.getId().toString()))
+                .andExpect(jsonPath("$.organizationId").value(organization.getId().toString()));
+    }
+
+    @Test
+    void managerCanCreateTicketForCustomerInSameOrganization() throws Exception {
+        Organization organization = createOrganization("Delta");
+        User manager = createUser(organization, Role.MANAGER, "manager@delta.com", "Manager");
+        User customer = createUser(organization, Role.CUSTOMER, "customer@delta.com", "Customer");
+
+        mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(manager))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Billing callback", TicketPriority.MEDIUM, TicketCategory.BILLING, customer.getId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.requesterId").value(customer.getId().toString()));
+    }
+
+    @Test
+    void adminCanCreateTicketForCustomerInSameOrganization() throws Exception {
+        Organization organization = createOrganization("Epsilon");
+        User admin = createUser(organization, Role.ADMIN, "admin@epsilon.com", "Admin");
+        User customer = createUser(organization, Role.CUSTOMER, "customer@epsilon.com", "Customer");
+
+        mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Security concern", TicketPriority.URGENT, TicketCategory.SECURITY, customer.getId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.requesterId").value(customer.getId().toString()));
+    }
+
+    @Test
+    void staffCannotCreateTicketForCustomerFromAnotherOrganization() throws Exception {
+        Organization orgA = createOrganization("OrgA");
+        Organization orgB = createOrganization("OrgB");
+        User agent = createUser(orgA, Role.AGENT, "agent@orga.com", "Agent");
+        User customerB = createUser(orgB, Role.CUSTOMER, "customer@orgb.com", "Customer B");
+
+        mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(agent))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Cross-org request", TicketPriority.HIGH, TicketCategory.TECHNICAL, customerB.getId()))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void staffCannotCreateTicketForNonCustomerRequester() throws Exception {
+        Organization organization = createOrganization("Zeta");
+        User agent = createUser(organization, Role.AGENT, "agent@zeta.com", "Agent");
+        User manager = createUser(organization, Role.MANAGER, "manager@zeta.com", "Manager");
+
+        mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(agent))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Invalid requester", TicketPriority.MEDIUM, TicketCategory.ACCOUNT, manager.getId()))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void staffMissingRequesterIdGetsValidationError() throws Exception {
+        Organization organization = createOrganization("Eta");
+        User agent = createUser(organization, Role.AGENT, "agent@eta.com", "Agent");
+
+        mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(agent))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Missing requester", TicketPriority.MEDIUM, TicketCategory.OTHER, null))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void customerCanOnlyListAndViewOwnTickets() throws Exception {
+        Organization organization = createOrganization("Theta");
+        User customerA = createUser(organization, Role.CUSTOMER, "a@theta.com", "Customer A");
+        User customerB = createUser(organization, Role.CUSTOMER, "b@theta.com", "Customer B");
 
         Ticket ticketA = createTicket(organization, customerA, "Issue A");
         Ticket ticketB = createTicket(organization, customerB, "Issue B");
@@ -123,15 +211,15 @@ class TicketIntegrationTest {
 
     @Test
     void agentCanOnlyAccessTicketsInsideOwnOrganization() throws Exception {
-        Organization orgA = createOrganization("Gamma");
-        Organization orgB = createOrganization("Delta");
+        Organization orgA = createOrganization("Iota");
+        Organization orgB = createOrganization("Kappa");
 
-        User agentA = createUser(orgA, Role.AGENT, "agent@gamma.com", "Agent A");
-        User customerA = createUser(orgA, Role.CUSTOMER, "customer@gamma.com", "Customer A");
-        User customerB = createUser(orgB, Role.CUSTOMER, "customer@delta.com", "Customer B");
+        User agentA = createUser(orgA, Role.AGENT, "agent@iota.com", "Agent A");
+        User customerA = createUser(orgA, Role.CUSTOMER, "customer@iota.com", "Customer A");
+        User customerB = createUser(orgB, Role.CUSTOMER, "customer@kappa.com", "Customer B");
 
-        Ticket ticketA = createTicket(orgA, customerA, "Gamma ticket");
-        Ticket ticketB = createTicket(orgB, customerB, "Delta ticket");
+        Ticket ticketA = createTicket(orgA, customerA, "Iota ticket");
+        Ticket ticketB = createTicket(orgB, customerB, "Kappa ticket");
 
         mockMvc.perform(get("/api/tickets")
                         .header("Authorization", bearerToken(agentA)))
@@ -142,6 +230,21 @@ class TicketIntegrationTest {
         mockMvc.perform(get("/api/tickets/{id}", ticketB.getId())
                         .header("Authorization", bearerToken(agentA)))
                 .andExpect(status().isNotFound());
+    }
+
+    private CreateTicketRequest createTicketRequest(
+            String title,
+            TicketPriority priority,
+            TicketCategory category,
+            java.util.UUID requesterId
+    ) {
+        return new CreateTicketRequest(
+                title,
+                "Description for " + title,
+                priority,
+                category,
+                requesterId
+        );
     }
 
     private Organization createOrganization(String name) {

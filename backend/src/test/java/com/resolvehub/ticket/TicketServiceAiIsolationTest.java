@@ -89,7 +89,8 @@ class TicketServiceAiIsolationTest {
                 "Cannot login",
                 "User cannot login after reset",
                 TicketPriority.HIGH,
-                TicketCategory.TECHNICAL
+                TicketCategory.TECHNICAL,
+                null
         );
 
         OffsetDateTime dueAt = OffsetDateTime.now().plusHours(8);

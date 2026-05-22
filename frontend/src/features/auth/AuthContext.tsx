@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userId,
       organizationId,
       email,
-      canCreateTickets: role === 'CUSTOMER',
+      canCreateTickets: Boolean(role),
       isAuthenticated: Boolean(token),
       login,
       logout,

@@ -63,6 +63,7 @@ export type CreateTicketRequest = {
   description: string;
   priority: TicketPriority;
   category: TicketCategory;
+  requesterId?: string | null;
 };
 
 export type TicketCommentResponse = {

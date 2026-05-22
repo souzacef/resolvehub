@@ -2,7 +2,14 @@ import type { CreateTicketRequest } from '../../types/api';
 
 export type CreateTicketFormValues = CreateTicketRequest;
 
-export function validateCreateTicket(values: CreateTicketFormValues): string[] {
+type CreateTicketValidationOptions = {
+  requireRequester?: boolean;
+};
+
+export function validateCreateTicket(
+  values: CreateTicketFormValues,
+  options: CreateTicketValidationOptions = {},
+): string[] {
   const errors: string[] = [];
 
   if (!values.title.trim()) {
@@ -23,6 +30,10 @@ export function validateCreateTicket(values: CreateTicketFormValues): string[] {
 
   if (!values.category) {
     errors.push('Category is required.');
+  }
+
+  if (options.requireRequester && !values.requesterId) {
+    errors.push('Requester is required.');
   }
 
   return errors;

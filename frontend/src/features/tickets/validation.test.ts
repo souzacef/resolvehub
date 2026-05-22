@@ -14,6 +14,21 @@ describe('validateCreateTicket', () => {
     expect(errors).toContain('Description is required.');
   });
 
+  it('requires requester when staff creates a ticket on behalf of a customer', () => {
+    const errors = validateCreateTicket(
+      {
+        title: 'Billing follow-up',
+        description: 'Customer called support about an invoice issue.',
+        priority: 'MEDIUM',
+        category: 'BILLING',
+        requesterId: '',
+      },
+      { requireRequester: true },
+    );
+
+    expect(errors).toContain('Requester is required.');
+  });
+
   it('returns no errors for valid form values', () => {
     const errors = validateCreateTicket({
       title: 'Cannot login after password reset',

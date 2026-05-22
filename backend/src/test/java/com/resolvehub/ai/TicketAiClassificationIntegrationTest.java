@@ -161,7 +161,8 @@ class TicketAiClassificationIntegrationTest {
                 "Cannot access account",
                 "User cannot login after reset",
                 TicketPriority.HIGH,
-                TicketCategory.TECHNICAL
+                TicketCategory.TECHNICAL,
+                null
         );
 
         mockMvc.perform(post("/api/tickets")

@@ -172,7 +172,8 @@ class TicketSlaIntegrationTest {
                 title,
                 "Ticket description",
                 priority,
-                TicketCategory.TECHNICAL
+                TicketCategory.TECHNICAL,
+                null
         );
 
         MvcResult result = mockMvc.perform(post("/api/tickets")

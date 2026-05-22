@@ -73,12 +73,7 @@ public class TicketService {
     public TicketResponse createTicket(ResolveHubUserPrincipal principal, CreateTicketRequest request) {
         requirePrincipal(principal);
 
-        if (principal.getRole() != Role.CUSTOMER) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only customers can create tickets");
-        }
-
-        User requester = userRepository.findByIdAndOrganizationId(principal.getUserId(), principal.getOrganizationId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Requester not found in organization"));
+        User requester = resolveTicketRequester(principal, request);
 
         Ticket ticket = new Ticket();
         ticket.setOrganization(requester.getOrganization());
@@ -298,6 +293,36 @@ public class TicketService {
         } catch (RuntimeException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI classification provider failed", ex);
         }
+    }
+
+    private User resolveTicketRequester(ResolveHubUserPrincipal principal, CreateTicketRequest request) {
+        Role role = principal.getRole();
+
+        if (role == Role.CUSTOMER) {
+            if (request.requesterId() != null && !request.requesterId().equals(principal.getUserId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Customers can only create tickets for themselves");
+            }
+
+            return userRepository.findByIdAndOrganizationId(principal.getUserId(), principal.getOrganizationId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Requester not found in organization"));
+        }
+
+        if (role == Role.AGENT || role == Role.MANAGER || role == Role.ADMIN) {
+            if (request.requesterId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "requesterId is required for staff-created tickets");
+            }
+
+            User requester = userRepository.findByIdAndOrganizationId(request.requesterId(), principal.getOrganizationId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Requester not found in organization"));
+
+            if (requester.getRole() != Role.CUSTOMER) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tickets can only be created for customer users");
+            }
+
+            return requester;
+        }
+
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed to create tickets");
     }
 
     private void assignAsAgent(
