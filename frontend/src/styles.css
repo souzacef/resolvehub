@@ -221,6 +221,7 @@ button:disabled {
   border-radius: 16px;
   padding: 1.2rem;
   box-shadow: var(--shadow);
+  min-height: 8.5rem;
 }
 
 .stat-card h2 {
@@ -435,9 +436,21 @@ th {
   color: #a81b12;
 }
 
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.9rem;
   }
 
   .sidebar {

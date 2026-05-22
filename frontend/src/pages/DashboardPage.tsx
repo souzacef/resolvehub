@@ -6,7 +6,7 @@ import { computeTicketStats } from '../lib/ticketStats';
 import type { TicketResponse } from '../types/api';
 
 export function DashboardPage() {
-  const { canCreateTickets, role } = useAuth();
+  const { canCreateTickets, role, userId } = useAuth();
   const [tickets, setTickets] = useState<TicketResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,8 +39,8 @@ export function DashboardPage() {
   }, []);
 
   const stats = useMemo(() => {
-    return computeTicketStats(tickets);
-  }, [tickets]);
+    return computeTicketStats(tickets, userId);
+  }, [tickets, userId]);
 
   const isCustomer = role === 'CUSTOMER';
 
@@ -51,6 +51,26 @@ export function DashboardPage() {
       ).length,
     [tickets],
   );
+
+  const customerCards = [
+    { label: 'My tickets', value: stats.total },
+    { label: 'Open tickets', value: stats.open },
+    { label: 'Resolved tickets', value: customerResolvedCount },
+    { label: 'High/Urgent tickets', value: stats.highUrgent },
+  ];
+
+  const staffCards = [
+    { label: 'Total tickets', value: stats.total },
+    { label: 'Open tickets', value: stats.open },
+    { label: 'Overdue tickets', value: stats.overdue },
+    { label: 'High/Urgent priority', value: stats.highUrgent },
+    { label: 'Assigned to me', value: stats.assignedToMe },
+    { label: 'Unassigned tickets', value: stats.unassigned },
+    { label: 'Waiting customer', value: stats.waitingCustomer },
+    { label: 'Resolved tickets', value: stats.resolved },
+  ];
+
+  const cards = isCustomer ? customerCards : staffCards;
 
   return (
     <section>
@@ -82,22 +102,12 @@ export function DashboardPage() {
       ) : null}
 
       <div className="stats-grid">
-        <article className="stat-card">
-          <h2>{isCustomer ? 'My tickets' : 'Total tickets'}</h2>
-          <strong>{stats.total}</strong>
-        </article>
-        <article className="stat-card">
-          <h2>Open tickets</h2>
-          <strong>{stats.open}</strong>
-        </article>
-        <article className="stat-card">
-          <h2>{isCustomer ? 'Resolved tickets' : 'Overdue tickets'}</h2>
-          <strong>{isCustomer ? customerResolvedCount : stats.overdue}</strong>
-        </article>
-        <article className="stat-card">
-          <h2>{isCustomer ? 'High/Urgent tickets' : 'High/Urgent priority'}</h2>
-          <strong>{stats.highUrgent}</strong>
-        </article>
+        {cards.map((card) => (
+          <article className="stat-card" key={card.label}>
+            <h2>{card.label}</h2>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
       </div>
     </section>
   );
