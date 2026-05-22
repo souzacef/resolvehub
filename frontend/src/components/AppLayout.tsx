@@ -5,7 +5,6 @@ export function AppLayout() {
   const { email, role, logout } = useAuth();
   const navigate = useNavigate();
 
-  const userLabel = email && role ? `Logged in as ${email} · ${role}` : null;
   const canManageUsers = role === 'ADMIN' || role === 'MANAGER';
 
   function handleLogout() {
@@ -17,7 +16,15 @@ export function AppLayout() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">ResolveHub</div>
-        {userLabel ? <p className="auth-user-label">{userLabel}</p> : null}
+        {email && role ? (
+          <section className="auth-user-card" aria-label="Authenticated user">
+            <p className="auth-user-card-label">Signed in as</p>
+            <p className="auth-user-email" title={email}>
+              {email}
+            </p>
+            <span className="auth-user-role">{role}</span>
+          </section>
+        ) : null}
         <nav className="nav-links">
           <NavLink to="/dashboard">Dashboard</NavLink>
           <NavLink to="/tickets">Tickets</NavLink>
