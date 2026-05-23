@@ -29,7 +29,7 @@ docker compose up -d ollama
 
 ```bash
 cd backend
-./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
 
 Backend URL:
@@ -70,7 +70,7 @@ npm test -- --run
 npm run build
 ```
 
-CI validates application tests, frontend build, and Docker image builds.
+GitHub Actions CI validates backend tests, frontend tests/build, and Docker image builds.
 
 ## Docker Compose App Profile
 

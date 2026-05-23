@@ -62,7 +62,8 @@ Spring Boot API
 
 ### Ticket
 
-- `id`
+- `id` (UUID internal key)
+- `ticketNumber` (human-readable reference, e.g., `RH-1001`)
 - `organization`
 - `requester`
 - `assignee` (nullable)
@@ -108,14 +109,27 @@ Spring Boot API
 ## Role Behavior
 
 - `CUSTOMER`
-  - can create tickets
+  - can create tickets for self
   - can list/view only own tickets
   - can comment only on own tickets
   - cannot create internal comments
   - cannot assign tickets
   - cannot view audit logs
-- `AGENT`, `MANAGER`, `ADMIN`
+- `AGENT`
   - can list/view tickets in own organization
+  - can create tickets on behalf of customers in own organization
+  - can create internal/public comments in own organization
+  - can request AI classification
+- `MANAGER`
+  - can list/view tickets in own organization
+  - can create tickets on behalf of customers in own organization
+  - can create organization users with roles `CUSTOMER` or `AGENT`
+  - can create internal/public comments in own organization
+  - can request AI classification
+- `ADMIN`
+  - can list/view tickets in own organization
+  - can create tickets on behalf of customers in own organization
+  - can create organization users with roles `CUSTOMER`, `AGENT`, `MANAGER`, or `ADMIN`
   - can create internal/public comments in own organization
   - can request AI classification
 - Assignment-specific behavior:

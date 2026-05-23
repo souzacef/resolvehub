@@ -32,7 +32,7 @@ Examples:
 
 ```text
 Ticket cannot move from CLOSED to RESOLVED.
-Customer cannot close a ticket directly.
+Customer can only use customer-approved status transitions.
 URGENT ticket receives shorter SLA deadline than HIGH ticket.
 Ticket creation succeeds when AI provider throws exception.
 ```
@@ -177,12 +177,11 @@ A frontend feature is done when:
 
 ## CI expectations
 
-GitHub Actions should run:
+GitHub Actions CI should run:
 
-- Backend build
-- Backend tests
-- Frontend install
-- Frontend build
-- Frontend tests, once configured
+- Backend build and tests
+- Frontend install/build/tests
+- Backend Docker image build validation
+- Frontend Docker image build validation
 
-The CI should start as a skeleton and become stricter as implementation grows.
+CI should remain strict enough to catch regressions in authorization, multi-tenancy, and workflow behavior.

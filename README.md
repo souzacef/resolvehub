@@ -8,6 +8,7 @@ ResolveHub is a portfolio-ready full-stack customer support ticket platform. It 
 - Backend health: https://resolvehub-0ssp.onrender.com/actuator/health
 - API docs: https://resolvehub-0ssp.onrender.com/swagger-ui/index.html
 - Hosted demo data guide: [docs/demo-data.md](docs/demo-data.md)
+- Deployment: Hosted on Render (frontend static site + backend web service + managed PostgreSQL)
 
 Note: the hosted backend may take a moment to wake up on the first request.
 
@@ -25,16 +26,24 @@ Note: the hosted backend may take a moment to wake up on the first request.
 
 - Organization-based multi-tenancy
 - JWT authentication and role-based access control
+- Frontend registration flow for new organizations and initial admin onboarding
+- Organization user management (list + create users with role constraints)
 - Ticket creation, listing, detail view, and status workflow
+- Staff ticket creation on behalf of customers
+- Human-readable ticket numbers (`RH-1001`, `RH-1002`, ...) with UUIDs retained for internal routing
+- Searchable customer selector for staff requester selection
+- Role-aware dashboard metrics for customer and staff personas
 - Ticket comments (public/internal rules by role)
 - Ticket assignment with role constraints
 - SLA deadline calculation and overdue detection
+- Expired-session handling (JWT `exp` checks + authenticated `401` recovery to login)
 - Ticket audit logs
 - AI-assisted ticket classification (advisory suggestions)
 - Manual apply workflow for AI category/priority suggestions
 - Ticket search and filtering (search, status, priority, category, overdue)
+- Render deployment (frontend + backend + managed PostgreSQL)
 - Dev demo data seeding
-- CI with GitHub Actions
+- GitHub Actions CI
 
 ## Demo Walkthrough
 
@@ -59,7 +68,9 @@ This walkthrough highlights portfolio-relevant product behavior, including role-
 ## Role Behavior
 
 - `CUSTOMER`: creates tickets and views/comments on own tickets
-- `AGENT`, `MANAGER`, `ADMIN`: manage tickets in their organization
+- `AGENT`: manages tickets in own organization and can create tickets on behalf of customers
+- `MANAGER`: manages tickets, can create tickets on behalf of customers, and can create organization users (`CUSTOMER`, `AGENT`)
+- `ADMIN`: full organization ticket management, can create tickets on behalf of customers, and can create organization users (`CUSTOMER`, `AGENT`, `MANAGER`, `ADMIN`)
 
 ## Tech Stack
 
@@ -80,8 +91,11 @@ Frontend:
 - Vitest
 
 Infrastructure:
+- Docker
 - Docker Compose
 - GitHub Actions
+- Render
+- Managed PostgreSQL
 
 ## Architecture Overview
 
@@ -117,7 +131,7 @@ docker compose up -d ollama
 
 ```bash
 cd backend
-./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 ```
 
 Backend runs on `http://localhost:8080`.
@@ -182,16 +196,19 @@ When running backend with default `dev` profile, demo data is seeded:
 
 See [docs/ai-provider-design.md](docs/ai-provider-design.md).
 
-## CI Status
+## CI/CD Status
 
 GitHub Actions workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
-Current CI jobs:
+GitHub Actions currently provides CI (validation, test, and build checks):
 - repository validation
 - backend build and tests (`./mvnw clean verify`)
 - frontend build and tests (`npm run build`, `npm test -- --run`)
 - backend Docker image build validation
 - frontend Docker image build validation
+
+Deployment is hosted on Render (frontend, backend, and managed PostgreSQL).
+Auto-deploy behavior depends on your Render service settings and branch configuration.
 
 ## Documentation
 
@@ -204,7 +221,9 @@ Current CI jobs:
 
 ## Roadmap
 
-- Deployment automation / CD
-- Ticket list pagination and server-side filtering
-- Production-ready frontend/API integration tests
-- Production hardening (observability, secrets management, security controls)
+- Server-side pagination and filtering for high-volume ticket lists
+- End-to-end workflow tests across frontend and backend
+- Refresh-token support and session lifecycle hardening
+- Observability (centralized logs, traces, metrics, and alerting)
+- Custom domain and production TLS hardening for hosted environments
+- Secrets and security hardening for production operations

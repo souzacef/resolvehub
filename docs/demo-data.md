@@ -21,8 +21,8 @@ That first `ADMIN` user can then create additional users inside the same organiz
 
 Within an organization:
 
-- `ADMIN` can create `CUSTOMER`, `AGENT`, and `MANAGER` users.
-- `MANAGER` can create `CUSTOMER`, `AGENT`, and `MANAGER` users.
+- `ADMIN` can create `CUSTOMER`, `AGENT`, `MANAGER`, and `ADMIN` users.
+- `MANAGER` can create `CUSTOMER` and `AGENT` users.
 - `CUSTOMER` cannot create users.
 - `AGENT` cannot create users.
 
