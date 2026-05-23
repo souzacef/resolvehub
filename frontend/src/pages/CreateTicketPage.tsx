@@ -29,6 +29,7 @@ export function CreateTicketPage() {
   const [priority, setPriority] = useState<TicketPriority>('MEDIUM');
   const [category, setCategory] = useState<TicketCategory>('TECHNICAL');
   const [requesterId, setRequesterId] = useState('');
+  const [requesterSearchQuery, setRequesterSearchQuery] = useState('');
   const [organizationUsers, setOrganizationUsers] = useState<
     OrganizationUserResponse[]
   >([]);
@@ -45,6 +46,28 @@ export function CreateTicketPage() {
   const customerUsers = useMemo(
     () => organizationUsers.filter((organizationUser) => organizationUser.role === 'CUSTOMER'),
     [organizationUsers],
+  );
+
+  const requesterSearchTerm = requesterSearchQuery.trim();
+  const canShowRequesterResults = requesterSearchTerm.length >= 2;
+
+  const filteredCustomerUsers = useMemo(() => {
+    const normalizedQuery = requesterSearchTerm.toLowerCase();
+
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    return customerUsers.filter((organizationUser) => {
+      const name = organizationUser.name?.toLowerCase() ?? '';
+      const email = organizationUser.email.toLowerCase();
+      return name.includes(normalizedQuery) || email.includes(normalizedQuery);
+    });
+  }, [customerUsers, requesterSearchTerm]);
+
+  const selectedCustomer = useMemo(
+    () => customerUsers.find((organizationUser) => organizationUser.id === requesterId) ?? null,
+    [customerUsers, requesterId],
   );
 
   const validationErrors = useMemo(
@@ -101,6 +124,12 @@ export function CreateTicketPage() {
     };
   }, [isStaff]);
 
+  useEffect(() => {
+    if (requesterId && !customerUsers.some((organizationUser) => organizationUser.id === requesterId)) {
+      setRequesterId('');
+    }
+  }, [customerUsers, requesterId]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -130,10 +159,19 @@ export function CreateTicketPage() {
 
   function formatCustomerLabel(organizationUser: OrganizationUserResponse) {
     if (organizationUser.name && organizationUser.name.trim().length > 0) {
-      return `${organizationUser.name.trim()} (${organizationUser.email})`;
+      return `${organizationUser.name.trim()} — ${organizationUser.email}`;
     }
 
     return organizationUser.email;
+  }
+
+  function handleSelectRequester(nextRequesterId: string) {
+    setRequesterId(nextRequesterId);
+    setRequesterSearchQuery('');
+  }
+
+  function clearSelectedRequester() {
+    setRequesterId('');
   }
 
   function mapOrganizationUsersLoadError(error: unknown): string {
@@ -224,7 +262,7 @@ export function CreateTicketPage() {
       <form className="form-card" onSubmit={handleSubmit} noValidate>
         {isStaff ? (
           <>
-            <label htmlFor="ticket-requester">Customer requester</label>
+            <p className="muted-text">Customer requester</p>
             {isOrganizationUsersLoading ? (
               <p className="state-panel">Loading customer users...</p>
             ) : null}
@@ -234,20 +272,72 @@ export function CreateTicketPage() {
               </p>
             ) : null}
             {!isOrganizationUsersLoading && !organizationUsersErrorMessage ? (
-              <select
-                id="ticket-requester"
-                name="requesterId"
-                value={requesterId}
-                onChange={(event) => setRequesterId(event.target.value)}
-                disabled={customerUsers.length === 0}
-              >
-                <option value="">Select customer</option>
-                {customerUsers.map((organizationUser) => (
-                  <option key={organizationUser.id} value={organizationUser.id}>
-                    {formatCustomerLabel(organizationUser)}
-                  </option>
-                ))}
-              </select>
+              <div className="requester-selector">
+                {selectedCustomer ? (
+                  <div className="requester-selected state-panel">
+                    <p className="muted-text">Selected customer</p>
+                    <p>{formatCustomerLabel(selectedCustomer)}</p>
+                    <button
+                      type="button"
+                      className="link-button link-button-secondary requester-clear-button"
+                      onClick={clearSelectedRequester}
+                    >
+                      Clear selection
+                    </button>
+                  </div>
+                ) : null}
+
+                <label htmlFor="ticket-requester-search">Search customers</label>
+                <input
+                  id="ticket-requester-search"
+                  name="ticket-requester-search"
+                  type="search"
+                  value={requesterSearchQuery}
+                  onChange={(event) => setRequesterSearchQuery(event.target.value)}
+                  placeholder="Search by customer name or email"
+                  disabled={customerUsers.length === 0}
+                />
+
+                {customerUsers.length > 0 ? (
+                  requesterSearchTerm.length === 0 ? (
+                    <p className="state-panel muted-text">
+                      Search by customer name or email to select a requester.
+                    </p>
+                  ) : !canShowRequesterResults ? (
+                    <p className="state-panel muted-text">
+                      Type at least 2 characters to search customers.
+                    </p>
+                  ) : filteredCustomerUsers.length > 0 ? (
+                    <ul className="requester-results" aria-label="Customer search results">
+                      {filteredCustomerUsers.map((organizationUser) => (
+                        <li key={organizationUser.id}>
+                          <button
+                            type="button"
+                            className={
+                              requesterId === organizationUser.id
+                                ? 'requester-option is-selected'
+                                : 'requester-option'
+                            }
+                            onClick={() => handleSelectRequester(organizationUser.id)}
+                          >
+                            {formatCustomerLabel(organizationUser)}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="state-panel muted-text">
+                      <p>No customers found.</p>
+                      <Link
+                        className="link-button link-button-secondary requester-create-customer"
+                        to="/organization/users"
+                      >
+                        Create customer
+                      </Link>
+                    </div>
+                  )
+                ) : null}
+              </div>
             ) : null}
             {showNoCustomersMessage ? (
               <p className="state-panel muted-text">

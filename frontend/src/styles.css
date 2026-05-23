@@ -282,6 +282,76 @@ button:disabled {
   padding-left: 1.2rem;
 }
 
+.requester-selector {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.requester-selected {
+  margin: 0 0 0.35rem;
+}
+
+.requester-selected p {
+  margin: 0;
+}
+
+.requester-selected p + p {
+  margin-top: 0.35rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.requester-clear-button {
+  margin-top: 0.7rem;
+  width: auto;
+  padding: 0.4rem 0.7rem;
+  border: 0;
+}
+
+.requester-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fbfdfc;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.requester-option {
+  margin-top: 0;
+  width: 100%;
+  border-radius: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: 'Public Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.94rem;
+  font-weight: 600;
+  line-height: 1.35;
+  padding: 0.62rem 0.8rem;
+  text-align: left;
+}
+
+.requester-results li:first-child .requester-option {
+  border-top: 0;
+}
+
+.requester-option:hover {
+  background: #e9f5ef;
+}
+
+.requester-option.is-selected {
+  background: #dff2e8;
+  color: #0b4b32;
+}
+
+.requester-create-customer {
+  display: inline-block;
+  margin-top: 0.55rem;
+}
+
 .detail-card {
   border: 1px solid var(--border);
   border-radius: 16px;
