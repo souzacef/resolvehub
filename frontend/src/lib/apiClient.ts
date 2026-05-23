@@ -1,4 +1,8 @@
-import { getAccessToken } from './storage';
+import {
+  markSessionExpiredNotice,
+  SESSION_EXPIRED_EVENT,
+} from './session';
+import { clearAccessToken, getAccessToken } from './storage';
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
@@ -76,6 +80,13 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const errorBody = await response.text();
+
+    if (response.status === 401 && options.auth !== false) {
+      clearAccessToken();
+      markSessionExpiredNotice();
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+
     throw ApiError.http(response.status, errorBody || null);
   }
 

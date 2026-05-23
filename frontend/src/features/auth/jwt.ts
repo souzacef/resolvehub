@@ -5,6 +5,7 @@ type JwtPayload = {
   role?: unknown;
   uid?: unknown;
   oid?: unknown;
+  exp?: unknown;
 };
 
 const roles: UserRole[] = ['CUSTOMER', 'AGENT', 'MANAGER', 'ADMIN'];
@@ -48,6 +49,35 @@ export function extractOrganizationIdFromJwt(token: string | null): string | nul
   return parsed.oid.trim();
 }
 
+
+export function extractExpirationFromJwt(token: string | null): number | null {
+  const parsed = parsePayload(token);
+  if (!parsed) {
+    return null;
+  }
+
+  if (typeof parsed.exp === 'number' && Number.isFinite(parsed.exp)) {
+    return parsed.exp;
+  }
+
+  if (typeof parsed.exp === 'string') {
+    const parsedExp = Number.parseInt(parsed.exp, 10);
+    if (!Number.isNaN(parsedExp)) {
+      return parsedExp;
+    }
+  }
+
+  return null;
+}
+
+export function isJwtExpired(token: string | null, nowMs: number = Date.now()): boolean {
+  const expSeconds = extractExpirationFromJwt(token);
+  if (expSeconds === null) {
+    return false;
+  }
+
+  return expSeconds * 1000 <= nowMs;
+}
 export function extractEmailFromJwt(token: string | null): string | null {
   const parsed = parsePayload(token);
   if (!parsed) {

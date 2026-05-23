@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { extractRoleFromJwt, extractUserIdFromJwt } from './jwt';
+import {
+  extractExpirationFromJwt,
+  extractRoleFromJwt,
+  extractUserIdFromJwt,
+  isJwtExpired,
+} from './jwt';
 
 function buildToken(payload: object): string {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
@@ -52,5 +57,39 @@ describe('extractUserIdFromJwt', () => {
 
   it('returns null for invalid token format', () => {
     expect(extractUserIdFromJwt('invalid')).toBeNull();
+  });
+});
+
+describe('extractExpirationFromJwt', () => {
+  it('returns exp when claim is numeric', () => {
+    const token = buildToken({ exp: 1_234_567_890 });
+    expect(extractExpirationFromJwt(token)).toBe(1_234_567_890);
+  });
+
+  it('returns exp when claim is a numeric string', () => {
+    const token = buildToken({ exp: '1234567890' });
+    expect(extractExpirationFromJwt(token)).toBe(1_234_567_890);
+  });
+
+  it('returns null when exp is missing', () => {
+    const token = buildToken({ role: 'ADMIN' });
+    expect(extractExpirationFromJwt(token)).toBeNull();
+  });
+});
+
+describe('isJwtExpired', () => {
+  it('returns true when exp is in the past', () => {
+    const token = buildToken({ exp: 100 });
+    expect(isJwtExpired(token, 101_000)).toBe(true);
+  });
+
+  it('returns false when exp is in the future', () => {
+    const token = buildToken({ exp: 100 });
+    expect(isJwtExpired(token, 99_000)).toBe(false);
+  });
+
+  it('returns false when exp claim is unavailable', () => {
+    const token = buildToken({ role: 'MANAGER' });
+    expect(isJwtExpired(token, 1_000_000)).toBe(false);
   });
 });

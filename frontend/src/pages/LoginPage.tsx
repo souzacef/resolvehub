@@ -1,7 +1,11 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { isApiError } from '../lib/apiClient';
+import {
+  consumeSessionExpiredNotice,
+  SESSION_EXPIRED_MESSAGE,
+} from '../lib/session';
 
 const SERVICE_UNAVAILABLE_MESSAGE =
   'Service is unavailable. Please try again later.';
@@ -16,6 +20,12 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (consumeSessionExpiredNotice()) {
+      setError(SESSION_EXPIRED_MESSAGE);
+    }
+  }, []);
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
