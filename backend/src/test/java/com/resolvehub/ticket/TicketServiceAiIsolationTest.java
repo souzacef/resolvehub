@@ -23,6 +23,7 @@ import com.resolvehub.ticket.service.TicketService;
 import com.resolvehub.user.domain.Role;
 import com.resolvehub.user.domain.User;
 import com.resolvehub.user.repository.UserRepository;
+import java.lang.reflect.Field;
 import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,7 +54,7 @@ class TicketServiceAiIsolationTest {
     private TicketAiClassifier ticketAiClassifier;
 
     @Test
-    void ticketCreationStillWorksWhenAiClassifierIsUnavailable() {
+    void ticketCreationStillWorksWhenAiClassifierIsUnavailable() throws Exception {
         TicketService ticketService = new TicketService(
                 ticketRepository,
                 userRepository,
@@ -65,6 +66,7 @@ class TicketServiceAiIsolationTest {
 
         UUID organizationId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+        UUID ticketId = UUID.randomUUID();
         ResolveHubUserPrincipal principal = new ResolveHubUserPrincipal(
                 userId,
                 organizationId,
@@ -76,6 +78,7 @@ class TicketServiceAiIsolationTest {
         Organization organization = new Organization();
         organization.setName("Acme");
         organization.setStatus("ACTIVE");
+        setEntityId(organization, organizationId);
 
         User requester = new User();
         requester.setOrganization(organization);
@@ -84,6 +87,7 @@ class TicketServiceAiIsolationTest {
         requester.setPasswordHash("hash");
         requester.setRole(Role.CUSTOMER);
         requester.setStatus("ACTIVE");
+        setEntityId(requester, userId);
 
         CreateTicketRequest request = new CreateTicketRequest(
                 "Cannot login",
@@ -94,8 +98,23 @@ class TicketServiceAiIsolationTest {
         );
 
         OffsetDateTime dueAt = OffsetDateTime.now().plusHours(8);
+        OffsetDateTime createdAt = OffsetDateTime.now();
+        Ticket persistedTicket = new Ticket();
+        persistedTicket.setOrganization(organization);
+        persistedTicket.setRequester(requester);
+        persistedTicket.setTitle("Cannot login");
+        persistedTicket.setDescription("User cannot login after reset");
+        persistedTicket.setStatus(TicketStatus.OPEN);
+        persistedTicket.setPriority(TicketPriority.HIGH);
+        persistedTicket.setCategory(TicketCategory.TECHNICAL);
+        persistedTicket.setCreatedAt(createdAt);
+        persistedTicket.setSlaDueAt(dueAt);
+        setEntityId(persistedTicket, ticketId);
+        setTicketNumber(persistedTicket, "RH-1001");
+
         TicketResponse expectedResponse = new TicketResponse(
-                UUID.randomUUID(),
+                ticketId,
+                "RH-1001",
                 organizationId,
                 userId,
                 null,
@@ -106,17 +125,31 @@ class TicketServiceAiIsolationTest {
                 TicketCategory.TECHNICAL,
                 dueAt,
                 false,
-                OffsetDateTime.now(),
-                OffsetDateTime.now()
+                createdAt,
+                createdAt
         );
 
         when(userRepository.findByIdAndOrganizationId(userId, organizationId)).thenReturn(Optional.of(requester));
         when(slaDeadlineCalculator.calculateDueAt(any(), any())).thenReturn(dueAt);
-        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(ticketMapper.toResponse(any(Ticket.class))).thenReturn(expectedResponse);
+        when(ticketRepository.saveAndFlush(any(Ticket.class))).thenReturn(persistedTicket);
+        when(ticketRepository.findByIdAndOrganizationId(ticketId, organizationId)).thenReturn(Optional.of(persistedTicket));
+        when(ticketMapper.toResponse(persistedTicket)).thenReturn(expectedResponse);
+
         TicketResponse actual = ticketService.createTicket(principal, request);
 
         assertEquals(expectedResponse, actual);
         verify(ticketAiClassifier, never()).classify(any());
+    }
+
+    private void setEntityId(Object entity, UUID id) throws Exception {
+        Field field = entity.getClass().getDeclaredField("id");
+        field.setAccessible(true);
+        field.set(entity, id);
+    }
+
+    private void setTicketNumber(Ticket ticket, String ticketNumber) throws Exception {
+        Field field = Ticket.class.getDeclaredField("ticketNumber");
+        field.setAccessible(true);
+        field.set(ticket, ticketNumber);
     }
 }

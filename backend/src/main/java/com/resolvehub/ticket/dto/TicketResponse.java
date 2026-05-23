@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record TicketResponse(
         UUID id,
+        String ticketNumber,
         UUID organizationId,
         UUID requesterId,
         UUID assigneeId,

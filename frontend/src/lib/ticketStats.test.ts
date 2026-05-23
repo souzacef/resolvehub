@@ -5,6 +5,7 @@ import type { TicketResponse } from '../types/api';
 function ticket(overrides: Partial<TicketResponse>): TicketResponse {
   return {
     id: '1',
+    ticketNumber: 'RH-1001',
     organizationId: 'org',
     requesterId: 'req',
     assigneeId: null,

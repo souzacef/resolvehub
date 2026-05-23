@@ -817,10 +817,14 @@ export function TicketDetailPage() {
 
       {!isLoading && !errorMessage && ticket ? (
         <article className="detail-card">
-          <h2>{ticket.title}</h2>
+          <h2>{ticket.ticketNumber} — {ticket.title}</h2>
           <p className="detail-description">{ticket.description}</p>
 
           <dl className="detail-grid">
+            <div className="detail-field">
+              <dt>Ticket</dt>
+              <dd>{ticket.ticketNumber}</dd>
+            </div>
             <div className="detail-field">
               <dt>Status</dt>
               <dd>{ticket.status}</dd>

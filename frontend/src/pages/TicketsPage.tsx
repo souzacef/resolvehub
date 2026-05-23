@@ -102,6 +102,7 @@ export function TicketsPage() {
     return tickets.filter((ticket) => {
       const matchesSearch =
         normalizedSearch.length === 0 ||
+        ticket.ticketNumber.toLowerCase().includes(normalizedSearch) ||
         ticket.title.toLowerCase().includes(normalizedSearch) ||
         ticket.description.toLowerCase().includes(normalizedSearch);
 
@@ -172,7 +173,7 @@ export function TicketsPage() {
           type="search"
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search title or description"
+          placeholder="Search ticket number, title, or description"
         />
 
         <div className="form-grid">
@@ -275,7 +276,7 @@ export function TicketsPage() {
           <table>
             <thead>
               <tr>
-                <th>Title</th>
+                <th>Ticket</th>
                 <th>Status</th>
                 <th>Priority</th>
                 <th>Category</th>
@@ -288,7 +289,9 @@ export function TicketsPage() {
               {filteredTickets.map((ticket) => (
                 <tr key={ticket.id}>
                   <td>
-                    <Link to={`/tickets/${ticket.id}`}>{ticket.title}</Link>
+                    <Link to={`/tickets/${ticket.id}`}>
+                      {ticket.ticketNumber} — {ticket.title}
+                    </Link>
                   </td>
                   <td>{ticket.status}</td>
                   <td>{ticket.priority}</td>

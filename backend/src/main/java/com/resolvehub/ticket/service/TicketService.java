@@ -86,9 +86,11 @@ public class TicketService {
         OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
         ticket.setCreatedAt(createdAt);
         ticket.setSlaDueAt(slaDeadlineCalculator.calculateDueAt(createdAt, request.priority()));
-        Ticket savedTicket = ticketRepository.save(ticket);
-        auditLogService.logTicketCreated(principal, savedTicket);
-        return ticketMapper.toResponse(savedTicket);
+        Ticket savedTicket = ticketRepository.saveAndFlush(ticket);
+        Ticket savedTicketWithNumber = ticketRepository.findByIdAndOrganizationId(savedTicket.getId(), principal.getOrganizationId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found after creation"));
+        auditLogService.logTicketCreated(principal, savedTicketWithNumber);
+        return ticketMapper.toResponse(savedTicketWithNumber);
     }
 
     @Transactional(readOnly = true)

@@ -44,6 +44,7 @@ export type TicketCategory =
 
 export type TicketResponse = {
   id: string;
+  ticketNumber: string;
   organizationId: string;
   requesterId: string;
   assigneeId: string | null;

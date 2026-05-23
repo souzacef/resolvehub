@@ -4,6 +4,7 @@ import com.resolvehub.organization.domain.Organization;
 import com.resolvehub.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
@@ -18,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Entity
+@EntityListeners(TicketEntityListener.class)
 @Table(name = "tickets")
 public class Ticket {
 
@@ -41,6 +43,9 @@ public class Ticket {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "ticket_number", nullable = false, unique = true, updatable = false, length = 32)
+    private String ticketNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -105,6 +110,14 @@ public class Ticket {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getTicketNumber() {
+        return ticketNumber;
+    }
+
+    void setTicketNumber(String ticketNumber) {
+        this.ticketNumber = ticketNumber;
     }
 
     public TicketStatus getStatus() {

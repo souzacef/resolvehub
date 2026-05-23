@@ -12,6 +12,7 @@ public class TicketMapper {
     public TicketResponse toResponse(Ticket ticket) {
         return new TicketResponse(
                 ticket.getId(),
+                ticket.getTicketNumber(),
                 ticket.getOrganization().getId(),
                 ticket.getRequester().getId(),
                 ticket.getAssignee() == null ? null : ticket.getAssignee().getId(),

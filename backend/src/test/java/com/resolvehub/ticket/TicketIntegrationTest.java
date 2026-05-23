@@ -85,12 +85,46 @@ class TicketIntegrationTest {
                         .content(objectMapper.writeValueAsString(createTicketRequest("Cannot login", TicketPriority.HIGH, TicketCategory.TECHNICAL, null))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
+                .andExpect(jsonPath("$.ticketNumber").value(org.hamcrest.Matchers.startsWith("RH-")))
                 .andExpect(jsonPath("$.organizationId").value(organization.getId().toString()))
                 .andExpect(jsonPath("$.requesterId").value(customer.getId().toString()))
                 .andExpect(jsonPath("$.title").value("Cannot login"))
                 .andExpect(jsonPath("$.status").value("OPEN"))
                 .andExpect(jsonPath("$.priority").value("HIGH"))
                 .andExpect(jsonPath("$.category").value("TECHNICAL"));
+    }
+
+
+    @Test
+    void ticketNumberIsUniqueAcrossCreatedTickets() throws Exception {
+        Organization organization = createOrganization("Acme-Uniq");
+        User customer = createUser(organization, Role.CUSTOMER, "unique@acme.com", "Customer Unique");
+
+        var firstResult = mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(customer))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("First issue", TicketPriority.MEDIUM, TicketCategory.OTHER, null))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var secondResult = mockMvc.perform(post("/api/tickets")
+                        .header("Authorization", bearerToken(customer))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createTicketRequest("Second issue", TicketPriority.MEDIUM, TicketCategory.OTHER, null))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        var firstJson = objectMapper.readTree(firstResult.getResponse().getContentAsString());
+        var secondJson = objectMapper.readTree(secondResult.getResponse().getContentAsString());
+
+        org.junit.jupiter.api.Assertions.assertNotEquals(
+                firstJson.get("ticketNumber").asText(),
+                secondJson.get("ticketNumber").asText()
+        );
+        org.junit.jupiter.api.Assertions.assertNotEquals(
+                firstJson.get("id").asText(),
+                firstJson.get("ticketNumber").asText()
+        );
     }
 
     @Test
@@ -202,7 +236,14 @@ class TicketIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].id").value(ticketA.getId().toString()))
+                .andExpect(jsonPath("$[0].ticketNumber").value(org.hamcrest.Matchers.startsWith("RH-")))
                 .andExpect(jsonPath("$[0].requesterId").value(customerA.getId().toString()));
+
+        mockMvc.perform(get("/api/tickets/{id}", ticketA.getId())
+                        .header("Authorization", bearerToken(customerA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(ticketA.getId().toString()))
+                .andExpect(jsonPath("$.ticketNumber").value(org.hamcrest.Matchers.startsWith("RH-")));
 
         mockMvc.perform(get("/api/tickets/{id}", ticketB.getId())
                         .header("Authorization", bearerToken(customerA)))
