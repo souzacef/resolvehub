@@ -88,6 +88,25 @@ select {
   font: inherit;
 }
 
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #91baa8;
+  box-shadow: 0 0 0 3px rgba(15, 123, 83, 0.12);
+}
+
+.input-invalid {
+  border-color: #cf8b84;
+  background: #fff7f6;
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.08);
+}
+
+.input-valid {
+  border-color: #9fc3b2;
+  background: #f8fcfa;
+}
+
 button {
   margin-top: 1.2rem;
   width: 100%;
@@ -104,6 +123,62 @@ button {
 button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.password-input-wrapper {
+  position: relative;
+}
+
+.password-input-wrapper input {
+  padding-right: 4.5rem;
+}
+
+.password-toggle-button {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  width: auto;
+  margin-top: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.28rem 0.58rem;
+  min-width: 3rem;
+  background: #f2f8f5;
+  color: #294c3d;
+  font-family: 'Public Sans', 'Helvetica Neue', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.password-toggle-button:hover {
+  background: #e7f2ec;
+}
+
+.password-toggle-button:focus-visible {
+  outline: 2px solid rgba(15, 123, 83, 0.35);
+  outline-offset: 1px;
+}
+
+.field-feedback {
+  margin-top: 0.45rem;
+  margin-bottom: 0;
+  min-height: 1.2rem;
+  font-size: 0.88rem;
+  line-height: 1.25;
+}
+
+.field-feedback-muted {
+  color: var(--muted);
+}
+
+.field-feedback-error {
+  color: #9a2f27;
+}
+
+.field-feedback-success {
+  color: #2e5b48;
 }
 
 .error-text {

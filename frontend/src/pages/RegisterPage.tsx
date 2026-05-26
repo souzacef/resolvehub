@@ -2,6 +2,15 @@ import { FormEvent, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
 import { register } from '../features/auth/auth';
+import {
+  INVALID_EMAIL_MESSAGE,
+  isEmailFormatValid,
+} from '../features/auth/emailValidation';
+import {
+  PASSWORD_POLICY_HINT,
+  isPasswordPolicyCompliant,
+  validatePasswordPolicy,
+} from '../features/auth/passwordPolicy';
 import { isApiError } from '../lib/apiClient';
 
 const DUPLICATE_EMAIL_ERROR_MESSAGE =
@@ -18,10 +27,19 @@ export function RegisterPage() {
   const [organizationName, setOrganizationName] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const emailIsInvalid = emailTouched && !isEmailFormatValid(email);
+  const emailIsValid = emailTouched && email.trim().length > 0 && !emailIsInvalid;
+  const passwordHasValue = password.length > 0;
+  const passwordIsValid = passwordHasValue && isPasswordPolicyCompliant(password);
+  const passwordPolicyError =
+    passwordHasValue && !passwordIsValid ? validatePasswordPolicy(password) : null;
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -29,15 +47,37 @@ export function RegisterPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsSubmitting(true);
+    setEmailTouched(true);
     setError(null);
     setSuccess(null);
 
+    const hasRequiredFields =
+      organizationName.trim().length > 0 &&
+      name.trim().length > 0 &&
+      password.length > 0;
+
+    if (!hasRequiredFields) {
+      setError(REGISTRATION_VALIDATION_ERROR_MESSAGE);
+      return;
+    }
+
+    if (!isEmailFormatValid(email)) {
+      setError(INVALID_EMAIL_MESSAGE);
+      return;
+    }
+
+    const passwordValidationError = validatePasswordPolicy(password);
+    if (passwordValidationError !== null) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
       await register({
-        organizationName,
-        name,
-        email,
+        organizationName: organizationName.trim(),
+        name: name.trim(),
+        email: email.trim(),
         password,
       });
 
@@ -63,6 +103,13 @@ export function RegisterPage() {
 
     if (isDuplicateEmailError(submitError.status, submitError.responseBody)) {
       return DUPLICATE_EMAIL_ERROR_MESSAGE;
+    }
+
+    if (
+      submitError.responseBody !== null &&
+      submitError.responseBody.includes(PASSWORD_POLICY_HINT)
+    ) {
+      return PASSWORD_POLICY_HINT;
     }
 
     if (submitError.status === 400 || submitError.status === 422) {
@@ -102,7 +149,7 @@ export function RegisterPage() {
         <h1>Create Account</h1>
         <p>Create your organization and first admin account.</p>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <label htmlFor="organizationName">Organization name</label>
           <input
             id="organizationName"
@@ -128,24 +175,72 @@ export function RegisterPage() {
           <label htmlFor="email">Email</label>
           <input
             id="email"
-            type="email"
+            type="text"
             autoComplete="email"
             required
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            className={emailIsInvalid ? 'input-invalid' : emailIsValid ? 'input-valid' : ''}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setEmail(nextValue);
+              if (!emailTouched && nextValue.length > 0) {
+                setEmailTouched(true);
+              }
+            }}
+            onBlur={() => setEmailTouched(true)}
           />
+          <p
+            className={`field-feedback ${
+              emailIsInvalid ? 'field-feedback-error' : 'field-feedback-muted'
+            }`}
+            role={emailIsInvalid ? 'alert' : undefined}
+          >
+            {emailIsInvalid ? INVALID_EMAIL_MESSAGE : ' '}
+          </p>
 
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            maxLength={72}
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+          <div className="password-input-wrapper">
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              maxLength={72}
+              required
+              className={
+                passwordHasValue
+                  ? passwordIsValid
+                    ? 'input-valid'
+                    : 'input-invalid'
+                  : ''
+              }
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <button
+              type="button"
+              className="password-toggle-button"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              onClick={() => setShowPassword((currentValue) => !currentValue)}
+            >
+              {showPassword ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          <p
+            className={`field-feedback ${
+              passwordHasValue
+                ? passwordIsValid
+                  ? 'field-feedback-success'
+                  : 'field-feedback-error'
+                : 'field-feedback-muted'
+            }`}
+            role={passwordHasValue && !passwordIsValid ? 'alert' : undefined}
+          >
+            {passwordHasValue
+              ? passwordIsValid
+                ? 'Password meets requirements.'
+                : passwordPolicyError
+              : PASSWORD_POLICY_HINT}
+          </p>
 
           {error ? <p className="error-text">{error}</p> : null}
           {success ? <p className="muted-text">{success}</p> : null}

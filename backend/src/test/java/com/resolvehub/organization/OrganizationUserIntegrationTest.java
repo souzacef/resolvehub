@@ -24,6 +24,8 @@ import com.resolvehub.user.domain.User;
 import com.resolvehub.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +38,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class OrganizationUserIntegrationTest {
+
+    private static final String PASSWORD_POLICY_MESSAGE_SNIPPET =
+            "uppercase, lowercase, number, special character, and no spaces";
 
     @Autowired
     private MockMvc mockMvc;
@@ -318,6 +323,59 @@ class OrganizationUserIntegrationTest {
 
         User created = userRepository.findByEmail("scoped@orga.org").orElseThrow();
         assertEquals(orgA.getId(), created.getOrganization().getId());
+    }
+
+    @Test
+    void organizationUserCreationAcceptsPasswordThatMatchesPolicy() throws Exception {
+        Organization organization = createOrganization("PolicyOrg");
+        User admin = createUser(organization, Role.ADMIN, "admin@policy-org.org", "Admin");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Policy User",
+                                "policy.user@policy-org.org",
+                                "Password123!",
+                                Role.CUSTOMER
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("policy.user@policy-org.org"))
+                .andExpect(jsonPath("$.role").value("CUSTOMER"));
+
+        User created = userRepository.findByEmail("policy.user@policy-org.org").orElseThrow();
+        assertTrue(passwordEncoder.matches("Password123!", created.getPasswordHash()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Teste de senha",
+            "lowercaseonlypassword",
+            "Password!",
+            "Password123",
+            "Aa1!"
+    })
+    void organizationUserCreationRejectsPasswordsThatDoNotMatchPolicy(String invalidPassword) throws Exception {
+        Organization organization = createOrganization("WeakPasswordOrg");
+        User admin = createUser(organization, Role.ADMIN, "admin@weak-password.org", "Admin");
+
+        mockMvc.perform(post("/api/organization/users")
+                        .header("Authorization", bearerToken(admin))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new CreateOrganizationUserRequest(
+                                "Weak Password User",
+                                "weak.user@weak-password.org",
+                                invalidPassword,
+                                Role.CUSTOMER
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> {
+                    String responseBody = result.getResponse().getContentAsString();
+                    assertTrue(
+                            responseBody.contains(PASSWORD_POLICY_MESSAGE_SNIPPET),
+                            "Expected password policy validation details in the response body"
+                    );
+                });
     }
 
     private Organization createOrganization(String name) {

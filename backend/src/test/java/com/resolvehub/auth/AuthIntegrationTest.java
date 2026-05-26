@@ -16,6 +16,8 @@ import com.resolvehub.ticketcomment.repository.TicketCommentRepository;
 import com.resolvehub.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +31,9 @@ import org.springframework.web.server.ResponseStatusException;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AuthIntegrationTest {
+
+    private static final String PASSWORD_POLICY_MESSAGE_SNIPPET =
+            "uppercase, lowercase, number, special character, and no spaces";
 
     @Autowired
     private MockMvc mockMvc;
@@ -61,6 +66,58 @@ class AuthIntegrationTest {
         ticketRepository.deleteAll();
         userRepository.deleteAll();
         organizationRepository.deleteAll();
+    }
+
+    @Test
+    void registerAcceptsPasswordThatMatchesPolicy() throws Exception {
+        RegisterRequest request = new RegisterRequest(
+                "Policy Corp",
+                "Pat Admin",
+                "pat@policy.com",
+                "Password123!"
+        );
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.organizationId").isNotEmpty())
+                .andExpect(jsonPath("$.userId").isNotEmpty())
+                .andExpect(jsonPath("$.email").value("pat@policy.com"))
+                .andExpect(jsonPath("$.role").value("ADMIN"));
+
+        var user = userRepository.findByEmail("pat@policy.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertNotEquals("Password123!", user.getPasswordHash());
+        org.junit.jupiter.api.Assertions.assertTrue(passwordEncoder.matches("Password123!", user.getPasswordHash()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Teste de senha",
+            "lowercaseonlypassword",
+            "Password!",
+            "Password123",
+            "Aa1!"
+    })
+    void registerRejectsPasswordsThatDoNotMatchPolicy(String invalidPassword) throws Exception {
+        RegisterRequest request = new RegisterRequest(
+                "Weak Corp",
+                "Wendy Admin",
+                "wendy@weak.com",
+                invalidPassword
+        );
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> {
+                    String responseBody = result.getResponse().getContentAsString();
+                    assertTrue(
+                            responseBody.contains(PASSWORD_POLICY_MESSAGE_SNIPPET),
+                            "Expected password policy validation details in the response body"
+                    );
+                });
     }
 
     @Test

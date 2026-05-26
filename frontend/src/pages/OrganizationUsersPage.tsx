@@ -1,6 +1,15 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../features/auth/AuthContext';
 import {
+  INVALID_EMAIL_MESSAGE,
+  isEmailFormatValid,
+} from '../features/auth/emailValidation';
+import {
+  PASSWORD_POLICY_HINT,
+  isPasswordPolicyCompliant,
+  validatePasswordPolicy,
+} from '../features/auth/passwordPolicy';
+import {
   createOrganizationUser,
   listOrganizationUsers,
 } from '../features/tickets/tickets';
@@ -33,12 +42,21 @@ export function OrganizationUsersPage() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [newRole, setNewRole] = useState<UserRole>('CUSTOMER');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+
+  const emailIsInvalid = emailTouched && !isEmailFormatValid(email);
+  const emailIsValid = emailTouched && email.trim().length > 0 && !emailIsInvalid;
+  const passwordHasValue = password.length > 0;
+  const passwordIsValid = passwordHasValue && isPasswordPolicyCompliant(password);
+  const passwordPolicyError =
+    passwordHasValue && !passwordIsValid ? validatePasswordPolicy(password) : null;
 
   useEffect(() => {
     if (!canManageUsers) {
@@ -96,14 +114,34 @@ export function OrganizationUsersPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    setEmailTouched(true);
     setSubmitError(null);
     setSubmitSuccess(null);
 
+    const hasRequiredFields =
+      name.trim().length > 0 && email.trim().length > 0 && password.length > 0;
+
+    if (!hasRequiredFields) {
+      setSubmitError('Please check the user fields and try again.');
+      return;
+    }
+
+    if (!isEmailFormatValid(email)) {
+      setSubmitError(INVALID_EMAIL_MESSAGE);
+      return;
+    }
+
+    const passwordValidationError = validatePasswordPolicy(password);
+    if (passwordValidationError !== null) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
       await createOrganizationUser({
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim(),
         password,
         role: newRole,
       });
@@ -111,7 +149,9 @@ export function OrganizationUsersPage() {
       setSubmitSuccess('User created successfully.');
       setName('');
       setEmail('');
+      setEmailTouched(false);
       setPassword('');
+      setShowPassword(false);
       if (allowedRoles.length > 0) {
         setNewRole(allowedRoles[0]);
       }
@@ -158,6 +198,13 @@ export function OrganizationUsersPage() {
       return 'You do not have permission to create this user.';
     }
 
+    if (
+      error.responseBody !== null &&
+      error.responseBody.includes(PASSWORD_POLICY_HINT)
+    ) {
+      return PASSWORD_POLICY_HINT;
+    }
+
     if (error.status === 400 || error.status === 422) {
       return 'Please check the user fields and try again.';
     }
@@ -195,7 +242,7 @@ export function OrganizationUsersPage() {
       <section className="form-card" aria-label="Create organization user">
         <h2>Create User</h2>
 
-        <form onSubmit={handleCreateUser}>
+        <form onSubmit={handleCreateUser} noValidate>
           <div className="form-grid">
             <div>
               <label htmlFor="org-user-name">Name</label>
@@ -214,27 +261,75 @@ export function OrganizationUsersPage() {
               <label htmlFor="org-user-email">Email</label>
               <input
                 id="org-user-email"
-                type="email"
+                type="text"
                 autoComplete="email"
                 required
                 maxLength={255}
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                className={emailIsInvalid ? 'input-invalid' : emailIsValid ? 'input-valid' : ''}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setEmail(nextValue);
+                  if (!emailTouched && nextValue.length > 0) {
+                    setEmailTouched(true);
+                  }
+                }}
+                onBlur={() => setEmailTouched(true)}
               />
+              <p
+                className={`field-feedback ${
+                  emailIsInvalid ? 'field-feedback-error' : 'field-feedback-muted'
+                }`}
+                role={emailIsInvalid ? 'alert' : undefined}
+              >
+                {emailIsInvalid ? INVALID_EMAIL_MESSAGE : ' '}
+              </p>
             </div>
 
             <div>
               <label htmlFor="org-user-password">Password</label>
-              <input
-                id="org-user-password"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                maxLength={72}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
+              <div className="password-input-wrapper">
+                <input
+                  id="org-user-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  maxLength={72}
+                  className={
+                    passwordHasValue
+                      ? passwordIsValid
+                        ? 'input-valid'
+                        : 'input-invalid'
+                      : ''
+                  }
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+                <button
+                  type="button"
+                  className="password-toggle-button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((currentValue) => !currentValue)}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <p
+                className={`field-feedback ${
+                  passwordHasValue
+                    ? passwordIsValid
+                      ? 'field-feedback-success'
+                      : 'field-feedback-error'
+                    : 'field-feedback-muted'
+                }`}
+                role={passwordHasValue && !passwordIsValid ? 'alert' : undefined}
+              >
+                {passwordHasValue
+                  ? passwordIsValid
+                    ? 'Password meets requirements.'
+                    : passwordPolicyError
+                  : PASSWORD_POLICY_HINT}
+              </p>
             </div>
 
             <div>
