@@ -68,6 +68,8 @@ a:hover {
   min-height: 100svh;
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 1rem;
   padding: 1.5rem;
   background: var(--app-bg);
   background-image: var(--app-bg-gradient);
@@ -92,6 +94,36 @@ a:hover {
 .login-card p {
   margin: 0 0 1.4rem;
   color: var(--muted);
+}
+
+.auth-switch-link {
+  margin-top: 1rem;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.login-footer {
+  max-width: min(100%, 760px);
+  margin: 0 auto;
+  color: rgba(232, 243, 237, 0.66);
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.login-footer a {
+  color: rgba(169, 220, 194, 0.86);
+  text-decoration: none;
+}
+
+.login-footer-separator {
+  display: inline-block;
+  margin: 0 0.35rem;
+  color: rgba(232, 243, 237, 0.54);
+}
+
+.login-footer a:hover {
+  color: #d5f2e3;
 }
 
 label {
@@ -644,8 +676,17 @@ button:disabled {
 
 .requester-selected p + p {
   margin-top: 0.35rem;
+}
+
+.requester-selected-name {
   color: var(--text);
+  font-weight: 700;
+}
+
+.requester-selected-email {
+  color: var(--muted);
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .requester-clear-button {

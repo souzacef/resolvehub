@@ -254,6 +254,14 @@ export function RegisterPage() {
           Already have an account? <Link to="/login">Back to login</Link>
         </p>
       </div>
+
+      <footer className="login-footer">
+        <span>Built by Carlos Eduardo Freire de Souza</span>
+        <span className="login-footer-separator" aria-hidden="true">&middot;</span>
+        <a href="https://github.com/souzacef">GitHub</a>
+        <span className="login-footer-separator" aria-hidden="true">&middot;</span>
+        <a href="https://resolvehub-0ssp.onrender.com/actuator/health">Backend health</a>
+      </footer>
     </div>
   );
 }

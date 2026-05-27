@@ -276,66 +276,72 @@ export function CreateTicketPage() {
                 {selectedCustomer ? (
                   <div className="requester-selected state-panel">
                     <p className="muted-text">Selected customer</p>
-                    <p>{formatCustomerLabel(selectedCustomer)}</p>
+                    <p className="requester-selected-name">
+                      {selectedCustomer.name?.trim() || 'Unnamed customer'}
+                    </p>
+                    <p className="requester-selected-email">{selectedCustomer.email}</p>
                     <button
                       type="button"
                       className="link-button link-button-secondary requester-clear-button"
                       onClick={clearSelectedRequester}
                     >
-                      Clear selection
+                      Change customer
                     </button>
                   </div>
                 ) : null}
+                {!selectedCustomer ? (
+                  <>
+                    <label htmlFor="ticket-requester-search">Search customers</label>
+                    <input
+                      id="ticket-requester-search"
+                      name="ticket-requester-search"
+                      type="search"
+                      value={requesterSearchQuery}
+                      onChange={(event) => setRequesterSearchQuery(event.target.value)}
+                      placeholder="Search by customer name or email"
+                      disabled={customerUsers.length === 0}
+                    />
 
-                <label htmlFor="ticket-requester-search">Search customers</label>
-                <input
-                  id="ticket-requester-search"
-                  name="ticket-requester-search"
-                  type="search"
-                  value={requesterSearchQuery}
-                  onChange={(event) => setRequesterSearchQuery(event.target.value)}
-                  placeholder="Search by customer name or email"
-                  disabled={customerUsers.length === 0}
-                />
-
-                {customerUsers.length > 0 ? (
-                  requesterSearchTerm.length === 0 ? (
-                    <p className="state-panel muted-text">
-                      Search by customer name or email to select a requester.
-                    </p>
-                  ) : !canShowRequesterResults ? (
-                    <p className="state-panel muted-text">
-                      Type at least 2 characters to search customers.
-                    </p>
-                  ) : filteredCustomerUsers.length > 0 ? (
-                    <ul className="requester-results" aria-label="Customer search results">
-                      {filteredCustomerUsers.map((organizationUser) => (
-                        <li key={organizationUser.id}>
-                          <button
-                            type="button"
-                            className={
-                              requesterId === organizationUser.id
-                                ? 'requester-option is-selected'
-                                : 'requester-option'
-                            }
-                            onClick={() => handleSelectRequester(organizationUser.id)}
+                    {customerUsers.length > 0 ? (
+                      requesterSearchTerm.length === 0 ? (
+                        <p className="state-panel muted-text">
+                          Search by customer name or email to select a requester.
+                        </p>
+                      ) : !canShowRequesterResults ? (
+                        <p className="state-panel muted-text">
+                          Type at least 2 characters to search customers.
+                        </p>
+                      ) : filteredCustomerUsers.length > 0 ? (
+                        <ul className="requester-results" aria-label="Customer search results">
+                          {filteredCustomerUsers.map((organizationUser) => (
+                            <li key={organizationUser.id}>
+                              <button
+                                type="button"
+                                className={
+                                  requesterId === organizationUser.id
+                                    ? 'requester-option is-selected'
+                                    : 'requester-option'
+                                }
+                                onClick={() => handleSelectRequester(organizationUser.id)}
+                              >
+                                {formatCustomerLabel(organizationUser)}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="state-panel muted-text">
+                          <p>No customers found.</p>
+                          <Link
+                            className="link-button link-button-secondary requester-create-customer"
+                            to="/organization/users"
                           >
-                            {formatCustomerLabel(organizationUser)}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="state-panel muted-text">
-                      <p>No customers found.</p>
-                      <Link
-                        className="link-button link-button-secondary requester-create-customer"
-                        to="/organization/users"
-                      >
-                        Create customer
-                      </Link>
-                    </div>
-                  )
+                            Create customer
+                          </Link>
+                        </div>
+                      )
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             ) : null}

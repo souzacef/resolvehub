@@ -134,10 +134,18 @@ export function LoginPage() {
           </button>
         </form>
 
-        <p className="muted-text" style={{ marginTop: '1rem' }}>
+        <p className="muted-text auth-switch-link">
           New to ResolveHub? <Link to="/register">Create an account</Link>
         </p>
       </div>
+
+      <footer className="login-footer">
+        <span>Built by Carlos Eduardo Freire de Souza</span>
+        <span className="login-footer-separator" aria-hidden="true">&middot;</span>
+        <a href="https://github.com/souzacef">GitHub</a>
+        <span className="login-footer-separator" aria-hidden="true">&middot;</span>
+        <a href="https://resolvehub-0ssp.onrender.com/actuator/health">Backend health</a>
+      </footer>
     </div>
   );
 }

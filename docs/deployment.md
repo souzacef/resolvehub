@@ -36,9 +36,13 @@ Backend URL:
 
 - `http://localhost:8080`
 
-Swagger UI in dev profile:
+Swagger UI in dev profile only:
 
 - `http://localhost:8080/swagger-ui.html`
+
+Production Swagger UI is not publicly exposed on Render. Use the backend health endpoint to verify the hosted backend service:
+
+- `https://resolvehub-0ssp.onrender.com/actuator/health`
 
 ### 3) Run frontend
 
@@ -160,7 +164,8 @@ Important:
 ### 6) Verify health endpoint and login
 
 1. Open backend health endpoint:
-   - `https://<your-backend-domain>/api/health`
+   - `https://<your-backend-domain>/actuator/health`
+   - Current public demo: `https://resolvehub-0ssp.onrender.com/actuator/health`
 2. Open frontend URL and log in.
 3. Verify ticket list loads and authenticated API calls succeed.
 4. If using `fake` AI provider, confirm AI suggestion endpoint works without external provider dependencies.

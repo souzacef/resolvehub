@@ -6,7 +6,7 @@ ResolveHub is a portfolio-ready full-stack customer support ticket platform. It 
 
 - Frontend: https://resolvehub-frontend.onrender.com
 - Backend health: https://resolvehub-0ssp.onrender.com/actuator/health
-- API docs: https://resolvehub-0ssp.onrender.com/swagger-ui/index.html
+- API docs: Swagger/OpenAPI is available locally in the dev profile at `http://localhost:8080/swagger-ui.html`.
 - Hosted demo data guide: [docs/demo-data.md](docs/demo-data.md)
 - Deployment: Hosted on Render (frontend static site + backend web service + managed PostgreSQL)
 
@@ -136,7 +136,9 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 
 Backend runs on `http://localhost:8080`.
 
-Swagger UI (dev profile): `http://localhost:8080/swagger-ui.html`
+Swagger UI (dev profile only): `http://localhost:8080/swagger-ui.html`
+
+Production Swagger UI is not publicly exposed on Render; use the backend health link above to verify the hosted API service.
 
 ### 3) Run frontend
 
