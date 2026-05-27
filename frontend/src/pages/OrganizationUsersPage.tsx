@@ -381,7 +381,7 @@ export function OrganizationUsersPage() {
       ) : null}
 
       {!isLoadingUsers && !usersError && users.length > 0 ? (
-        <div className="table-wrapper">
+        <div className="table-wrapper org-users-table-wrapper">
           <table>
             <thead>
               <tr>
@@ -402,6 +402,30 @@ export function OrganizationUsersPage() {
           </table>
         </div>
       ) : null}
+
+      {!isLoadingUsers && !usersError && users.length > 0 ? (
+        <div className="org-users-mobile-list" aria-label="Organization users list">
+          {users.map((user) => (
+            <article className="org-user-mobile-card" key={user.id}>
+              <dl>
+                <div>
+                  <dt>Name</dt>
+                  <dd>{formatUserDisplayName(user)}</dd>
+                </div>
+                <div>
+                  <dt>Email</dt>
+                  <dd className="org-user-mobile-email">{user.email}</dd>
+                </div>
+                <div>
+                  <dt>Role</dt>
+                  <dd>{user.role}</dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
     </section>
   );
 }
