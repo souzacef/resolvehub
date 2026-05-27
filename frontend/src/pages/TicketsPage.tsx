@@ -151,9 +151,11 @@ export function TicketsPage() {
 
   const showAssigneeColumn = role !== 'CUSTOMER';
   const isCustomer = role === 'CUSTOMER';
+  const dueLabel = isCustomer ? 'Expected response by' : 'SLA due at';
+  const statusLabel = isCustomer ? 'Response status' : 'Overdue';
 
   return (
-    <section>
+    <section className="page-section-stack">
       <header className="page-header">
         <h1>Tickets</h1>
         <div className="header-actions">
@@ -165,7 +167,7 @@ export function TicketsPage() {
         </div>
       </header>
 
-      <section className="comment-form" aria-label="Ticket filters">
+      <section className="comment-form tickets-filter-panel" aria-label="Ticket filters">
         <label htmlFor="ticket-search">Search tickets</label>
         <input
           id="ticket-search"
@@ -247,7 +249,7 @@ export function TicketsPage() {
           </div>
         </div>
 
-        <div className="form-actions">
+        <div className="form-actions tickets-filter-actions">
           <button type="button" onClick={resetFilters}>
             Clear filters
           </button>
@@ -272,7 +274,7 @@ export function TicketsPage() {
       ) : null}
 
       {!isLoading && !error && filteredTickets.length > 0 ? (
-        <div className="table-wrapper">
+        <div className="table-wrapper tickets-table-wrapper">
           <table>
             <thead>
               <tr>
@@ -281,8 +283,8 @@ export function TicketsPage() {
                 <th>Priority</th>
                 <th>Category</th>
                 {showAssigneeColumn ? <th>Assignee</th> : null}
-                <th>{isCustomer ? 'Expected response by' : 'SLA due at'}</th>
-                <th>{isCustomer ? 'Response status' : 'Overdue'}</th>
+                <th>{dueLabel}</th>
+                <th>{statusLabel}</th>
               </tr>
             </thead>
             <tbody>
@@ -317,6 +319,60 @@ export function TicketsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      ) : null}
+
+      {!isLoading && !error && filteredTickets.length > 0 ? (
+        <div className="tickets-mobile-list" aria-label="Tickets list">
+          {filteredTickets.map((ticket) => (
+            <article className="tickets-mobile-card" key={ticket.id}>
+              <h2>
+                <Link to={`/tickets/${ticket.id}`} className="tickets-mobile-ticket-link">
+                  <span className="tickets-mobile-ticket-number">{ticket.ticketNumber}</span>
+                  <span className="tickets-mobile-ticket-title">{ticket.title}</span>
+                </Link>
+              </h2>
+
+              <dl className="tickets-mobile-meta-grid">
+                <div>
+                  <dt>Status</dt>
+                  <dd>{ticket.status}</dd>
+                </div>
+                <div>
+                  <dt>Priority</dt>
+                  <dd>{ticket.priority}</dd>
+                </div>
+                <div>
+                  <dt>Category</dt>
+                  <dd>{ticket.category}</dd>
+                </div>
+                <div>
+                  <dt>Assignee</dt>
+                  <dd>{formatAssignee(ticket.assigneeId)}</dd>
+                </div>
+                <div>
+                  <dt>{dueLabel}</dt>
+                  <dd>{new Date(ticket.slaDueAt).toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>{statusLabel}</dt>
+                  <dd>
+                    {isCustomer ? (
+                      ticket.overdue ? 'Past expected response' : 'On track'
+                    ) : (
+                      <span
+                        className={
+                          ticket.overdue ? 'pill pill-danger' : 'pill pill-success'
+                        }
+                      >
+                        {ticket.overdue ? 'Overdue' : 'On track'}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          ))}
         </div>
       ) : null}
     </section>

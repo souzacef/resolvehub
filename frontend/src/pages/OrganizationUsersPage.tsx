@@ -234,7 +234,7 @@ export function OrganizationUsersPage() {
   }
 
   return (
-    <section>
+    <section className="page-section-stack">
       <header className="page-header">
         <h1>Organization Users</h1>
       </header>
