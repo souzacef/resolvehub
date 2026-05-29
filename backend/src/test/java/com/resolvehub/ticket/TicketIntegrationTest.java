@@ -1,6 +1,9 @@
 package com.resolvehub.ticket;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -273,6 +276,126 @@ class TicketIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void agentListShowsUnassignedAndSelfAssignedButNotOtherAgentAssigned() throws Exception {
+        Organization organization = createOrganization("Lambda");
+
+        User agentA = createUser(organization, Role.AGENT, "agent-a@lambda.com", "Agent A");
+        User agentB = createUser(organization, Role.AGENT, "agent-b@lambda.com", "Agent B");
+        User customer = createUser(organization, Role.CUSTOMER, "customer@lambda.com", "Customer");
+
+        Ticket unassigned = createTicket(organization, customer, "Unassigned ticket");
+        Ticket assignedToAgentA = createTicket(organization, customer, "Assigned to A", agentA);
+        Ticket assignedToAgentB = createTicket(organization, customer, "Assigned to B", agentB);
+
+        mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", bearerToken(agentA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].id", hasItems(unassigned.getId().toString(), assignedToAgentA.getId().toString())))
+                .andExpect(jsonPath("$[*].id", not(hasItem(assignedToAgentB.getId().toString()))));
+    }
+
+    @Test
+    void agentCanViewUnassignedAndSelfAssignedButNotOtherAgentAssignedTicketDetail() throws Exception {
+        Organization organization = createOrganization("Mu");
+
+        User agentA = createUser(organization, Role.AGENT, "agent-a@mu.com", "Agent A");
+        User agentB = createUser(organization, Role.AGENT, "agent-b@mu.com", "Agent B");
+        User customer = createUser(organization, Role.CUSTOMER, "customer@mu.com", "Customer");
+
+        Ticket unassigned = createTicket(organization, customer, "Mu unassigned");
+        Ticket assignedToAgentA = createTicket(organization, customer, "Mu assigned A", agentA);
+        Ticket assignedToAgentB = createTicket(organization, customer, "Mu assigned B", agentB);
+
+        mockMvc.perform(get("/api/tickets/{id}", unassigned.getId())
+                        .header("Authorization", bearerToken(agentA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(unassigned.getId().toString()));
+
+        mockMvc.perform(get("/api/tickets/{id}", assignedToAgentA.getId())
+                        .header("Authorization", bearerToken(agentA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(assignedToAgentA.getId().toString()));
+
+        mockMvc.perform(get("/api/tickets/{id}", assignedToAgentB.getId())
+                        .header("Authorization", bearerToken(agentA)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void managerCanListAndViewAllTicketsInOwnOrganization() throws Exception {
+        Organization organization = createOrganization("Nu");
+
+        User manager = createUser(organization, Role.MANAGER, "manager@nu.com", "Manager");
+        User agentA = createUser(organization, Role.AGENT, "agent-a@nu.com", "Agent A");
+        User agentB = createUser(organization, Role.AGENT, "agent-b@nu.com", "Agent B");
+        User customer = createUser(organization, Role.CUSTOMER, "customer@nu.com", "Customer");
+
+        Ticket unassigned = createTicket(organization, customer, "Nu unassigned");
+        Ticket assignedToAgentA = createTicket(organization, customer, "Nu assigned A", agentA);
+        Ticket assignedToAgentB = createTicket(organization, customer, "Nu assigned B", agentB);
+
+        mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", bearerToken(manager)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[*].id", hasItems(
+                        unassigned.getId().toString(),
+                        assignedToAgentA.getId().toString(),
+                        assignedToAgentB.getId().toString()
+                )));
+
+        mockMvc.perform(get("/api/tickets/{id}", assignedToAgentB.getId())
+                        .header("Authorization", bearerToken(manager)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(assignedToAgentB.getId().toString()));
+    }
+
+    @Test
+    void adminCanListAndViewAllTicketsInOwnOrganization() throws Exception {
+        Organization organization = createOrganization("Xi");
+
+        User admin = createUser(organization, Role.ADMIN, "admin@xi.com", "Admin");
+        User agentA = createUser(organization, Role.AGENT, "agent-a@xi.com", "Agent A");
+        User agentB = createUser(organization, Role.AGENT, "agent-b@xi.com", "Agent B");
+        User customer = createUser(organization, Role.CUSTOMER, "customer@xi.com", "Customer");
+
+        Ticket unassigned = createTicket(organization, customer, "Xi unassigned");
+        Ticket assignedToAgentA = createTicket(organization, customer, "Xi assigned A", agentA);
+        Ticket assignedToAgentB = createTicket(organization, customer, "Xi assigned B", agentB);
+
+        mockMvc.perform(get("/api/tickets")
+                        .header("Authorization", bearerToken(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[*].id", hasItems(
+                        unassigned.getId().toString(),
+                        assignedToAgentA.getId().toString(),
+                        assignedToAgentB.getId().toString()
+                )));
+
+        mockMvc.perform(get("/api/tickets/{id}", assignedToAgentB.getId())
+                        .header("Authorization", bearerToken(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(assignedToAgentB.getId().toString()));
+    }
+
+    @Test
+    void managerCannotViewTicketFromAnotherOrganization() throws Exception {
+        Organization orgA = createOrganization("Omicron-A");
+        Organization orgB = createOrganization("Omicron-B");
+
+        User managerA = createUser(orgA, Role.MANAGER, "manager@omicron-a.com", "Manager A");
+        User customerB = createUser(orgB, Role.CUSTOMER, "customer@omicron-b.com", "Customer B");
+
+        Ticket ticketB = createTicket(orgB, customerB, "Other org ticket");
+
+        mockMvc.perform(get("/api/tickets/{id}", ticketB.getId())
+                        .header("Authorization", bearerToken(managerA)))
+                .andExpect(status().isNotFound());
+    }
+
     private CreateTicketRequest createTicketRequest(
             String title,
             TicketPriority priority,
@@ -307,9 +430,14 @@ class TicketIntegrationTest {
     }
 
     private Ticket createTicket(Organization organization, User requester, String title) {
+        return createTicket(organization, requester, title, null);
+    }
+
+    private Ticket createTicket(Organization organization, User requester, String title, User assignee) {
         Ticket ticket = new Ticket();
         ticket.setOrganization(organization);
         ticket.setRequester(requester);
+        ticket.setAssignee(assignee);
         ticket.setTitle(title);
         ticket.setDescription("Description for " + title);
         ticket.setStatus(TicketStatus.OPEN);

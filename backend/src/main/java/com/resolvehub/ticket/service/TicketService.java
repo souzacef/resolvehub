@@ -114,8 +114,21 @@ public class TicketService {
                         principal.getUserId()
                 );
             }
-        } else if (principal.getRole() == Role.AGENT
-                || principal.getRole() == Role.MANAGER
+        } else if (principal.getRole() == Role.AGENT) {
+            if (overdueOnly) {
+                tickets = ticketRepository.findOverdueVisibleToAgentOrderByCreatedAtDesc(
+                        principal.getOrganizationId(),
+                        principal.getUserId(),
+                        NON_OVERDUE_STATUSES,
+                        now
+                );
+            } else {
+                tickets = ticketRepository.findVisibleToAgentOrderByCreatedAtDesc(
+                        principal.getOrganizationId(),
+                        principal.getUserId()
+                );
+            }
+        } else if (principal.getRole() == Role.MANAGER
                 || principal.getRole() == Role.ADMIN) {
             if (overdueOnly) {
                 tickets = ticketRepository.findByOrganizationIdAndStatusNotInAndSlaDueAtBeforeOrderByCreatedAtDesc(
@@ -146,8 +159,15 @@ public class TicketService {
                             principal.getUserId()
                     )
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
-        } else if (principal.getRole() == Role.AGENT
-                || principal.getRole() == Role.MANAGER
+        } else if (principal.getRole() == Role.AGENT) {
+            ticket = ticketRepository
+                    .findVisibleToAgentByIdAndOrganizationId(
+                            ticketId,
+                            principal.getOrganizationId(),
+                            principal.getUserId()
+                    )
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found"));
+        } else if (principal.getRole() == Role.MANAGER
                 || principal.getRole() == Role.ADMIN) {
             ticket = ticketRepository
                     .findByIdAndOrganizationId(ticketId, principal.getOrganizationId())
