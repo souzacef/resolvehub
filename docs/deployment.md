@@ -126,7 +126,7 @@ Required:
 - `SPRING_DATASOURCE_PASSWORD=<password>`
 - `JWT_SECRET=<strong-random-secret-at-least-32-characters>`
 - `RESOLVEHUB_SECURITY_CORS_ALLOWED_ORIGINS=https://<your-frontend-domain>`
-- `RESOLVEHUB_AI_PROVIDER=fake` (recommended for hosted demo if no reachable AI provider)
+- `RESOLVEHUB_AI_PROVIDER=fake` (recommended default for the public hosted demo; deterministic, cost-safe, and no public API key requirement)
 
 Optional (only when `RESOLVEHUB_AI_PROVIDER=openai-compatible`):
 
@@ -138,7 +138,17 @@ Optional (only when `RESOLVEHUB_AI_PROVIDER=openai-compatible`):
 Notes:
 
 - `RESOLVEHUB_SECURITY_CORS_ALLOWED_ORIGINS` is the project’s CORS origins variable (equivalent to a generic `CORS_ALLOWED_ORIGINS` setting).
-- If using OpenAI-compatible mode, provider URL must be reachable from Render. Local-only URLs such as `http://127.0.0.1:11434` will not work.
+- If using OpenAI-compatible mode, provider URL must be reachable from Render.
+- `http://127.0.0.1:11434` on Render points to Render's own service container, not your development machine, so local Ollama URLs are not valid there.
+
+Example local OpenAI-compatible/Ollama configuration:
+
+```bash
+export RESOLVEHUB_AI_PROVIDER=openai-compatible
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL=http://127.0.0.1:11434/v1
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY=ollama
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL=llama3.1:8b
+```
 
 ### 4) Deploy frontend
 

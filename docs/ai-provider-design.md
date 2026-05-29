@@ -37,6 +37,7 @@ Ticket creation does not call AI.
 - No network calls.
 - Used by default when `resolvehub.ai.provider` is missing or set to `fake`.
 - Keeps local development and tests stable.
+- Used intentionally in the hosted Render demo for deterministic, cost-safe behavior and resilience against external provider downtime.
 
 ### 2) `OpenAiCompatibleTicketAiClassifier`
 
@@ -95,6 +96,8 @@ export RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS=20
 ```
 
 If these variables are not set, backend defaults to `fake` provider.
+
+For hosted environments such as Render, a local URL like `http://127.0.0.1:11434` points to that service container itself, not your development machine. Use a provider URL reachable from the hosted runtime.
 
 ## Why This Design
 

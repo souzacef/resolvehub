@@ -193,8 +193,17 @@ When running backend with default `dev` profile, demo data is seeded:
 
 - AI suggestions are advisory only.
 - Suggestions do not automatically update ticket category or priority.
-- `fake` provider is default.
-- OpenAI-compatible provider can be enabled for Ollama (`http://127.0.0.1:11434/v1`).
+- The hosted Render demo intentionally uses `fake` provider by default for deterministic, cost-safe public demos without external API keys.
+- Real AI integration is supported through the OpenAI-compatible provider, including local Ollama testing.
+
+Example local OpenAI-compatible/Ollama configuration:
+
+```bash
+export RESOLVEHUB_AI_PROVIDER=openai-compatible
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL=http://127.0.0.1:11434/v1
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY=ollama
+export RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL=llama3.1:8b
+```
 
 See [docs/ai-provider-design.md](docs/ai-provider-design.md).
 
