@@ -1,16 +1,16 @@
 # ResolveHub
 
-ResolveHub is a portfolio-ready full-stack customer support ticket platform. It demonstrates backend architecture, security, product workflows, testing discipline, and deployment readiness.
+ResolveHub is a portfolio-ready full-stack customer support ticket platform. It demonstrates backend architecture, security, product workflows, testing discipline, deployment, auditability, and human-in-the-loop AI assistance.
 
 ## Live Demo
 
 - Frontend: https://resolvehub-frontend.onrender.com
-- Backend health: https://resolvehub-0ssp.onrender.com/actuator/health
+- Service status: https://resolvehub-frontend.onrender.com/status
 - API docs: Swagger/OpenAPI is available locally in the dev profile at `http://localhost:8080/swagger-ui.html`.
 - Hosted demo data guide: [docs/demo-data.md](docs/demo-data.md)
-- Deployment: Hosted on Render (frontend static site + backend web service + managed PostgreSQL)
+- Deployment: Render frontend + backend, with persistent Neon PostgreSQL 16
 
-Note: the hosted backend may take a moment to wake up on the first request.
+Note: the hosted backend uses Render's free tier and may take a couple of minutes to wake after inactivity. The frontend service-status page polls the backend and reports when ResolveHub is ready.
 
 ## What This Project Demonstrates
 
@@ -20,6 +20,8 @@ Note: the hosted backend may take a moment to wake up on the first request.
 - SLA deadline calculation and overdue tracking
 - Append-only audit logging for ticket lifecycle events
 - AI-assisted ticket classification through a provider abstraction
+- Human review before AI suggestions can change ticket data
+- Persistent PostgreSQL deployment with Flyway migrations
 - CI validation with backend/frontend tests and Docker image builds
 
 ## Implemented Features
@@ -35,14 +37,17 @@ Note: the hosted backend may take a moment to wake up on the first request.
 - Role-aware dashboard metrics for customer and staff personas
 - Ticket comments (public/internal rules by role)
 - Ticket assignment with role constraints
+- Agent visibility restricted to unassigned tickets and tickets assigned to that agent
 - SLA deadline calculation and overdue detection
 - Expired-session handling (JWT `exp` checks + authenticated `401` recovery to login)
 - Ticket audit logs
 - AI-assisted ticket classification (advisory suggestions)
 - Manual apply workflow for AI category/priority suggestions
+- Audit logging when staff apply a classification change
 - Ticket search and filtering (search, status, priority, category, overdue)
-- Render deployment (frontend + backend + managed PostgreSQL)
-- Dev demo data seeding
+- Public service-status page for Render cold starts
+- Render deployment with persistent Neon PostgreSQL
+- Controlled demo data seeding
 - GitHub Actions CI
 
 ## Demo Walkthrough
@@ -60,17 +65,17 @@ This walkthrough highlights portfolio-relevant product behavior, including role-
    Ticket operations are role-aware, with status workflow and assignment bounded by backend authorization rules.
 4. AI classification suggestion
    ![ResolveHub AI classification suggestion](docs/images/ai-classification.png)
-   AI suggestions provide advisory category/priority guidance without auto-applying ticket changes.
+   AI suggestions provide advisory category/priority guidance without auto-applying ticket changes. The hosted demo uses Gemini through ResolveHub's OpenAI-compatible provider.
 5. Audit log and comments
    ![ResolveHub audit log and comments](docs/images/audit-log.png)
-   Audit logs and comments provide a clear, chronological trace of ticket communication and lifecycle actions.
+   Audit logs and comments provide a chronological trace of ticket communication and lifecycle actions, including applied classification changes.
 
 ## Role Behavior
 
 - `CUSTOMER`: creates tickets and views/comments on own tickets
-- `AGENT`: manages tickets in own organization and can create tickets on behalf of customers
-- `MANAGER`: manages tickets, can create tickets on behalf of customers, and can create organization users (`CUSTOMER`, `AGENT`)
-- `ADMIN`: full organization ticket management, can create tickets on behalf of customers, and can create organization users (`CUSTOMER`, `AGENT`, `MANAGER`, `ADMIN`)
+- `AGENT`: sees unassigned tickets plus tickets assigned to self; can self-assign eligible unassigned tickets and work assigned tickets
+- `MANAGER`: manages organization tickets, assignments, workflows, and can create `CUSTOMER`/`AGENT` users
+- `ADMIN`: full organization ticket management and can create all supported user roles
 
 ## Tech Stack
 
@@ -91,19 +96,25 @@ Frontend:
 - Vitest
 
 Infrastructure:
-- Docker
-- Docker Compose
+- Docker / Docker Compose
 - GitHub Actions
 - Render
-- Managed PostgreSQL
+- Neon PostgreSQL 16
+
+AI:
+- Provider abstraction with deterministic fake provider for local/test use
+- OpenAI-compatible HTTP provider
+- Gemini 3.5 Flash in the hosted Render deployment
 
 ## Architecture Overview
 
 - React frontend calls a secured Spring Boot API.
 - JWT carries user id, organization id, and role claims.
 - Backend enforces authorization and organization scoping.
-- PostgreSQL stores organizations, users, tickets, comments, and audit logs.
-- AI classification is provider-agnostic (`fake` by default, OpenAI-compatible optional).
+- Neon PostgreSQL stores organizations, users, tickets, comments, and audit logs in the hosted environment.
+- Flyway owns schema evolution and validates migrations at startup.
+- AI classification is provider-agnostic: deterministic `fake` mode remains available, while production uses the OpenAI-compatible adapter with Gemini.
+- AI suggestions are advisory until a staff user explicitly applies them; the resulting classification update is audit logged.
 
 See [docs/architecture.md](docs/architecture.md) for details.
 
@@ -121,7 +132,7 @@ See [docs/architecture.md](docs/architecture.md) for details.
 docker compose up -d db
 ```
 
-Optional (for local AI provider testing):
+Optional local AI runtime:
 
 ```bash
 docker compose up -d ollama
@@ -137,8 +148,6 @@ SPRING_PROFILES_ACTIVE=dev ./mvnw spring-boot:run
 Backend runs on `http://localhost:8080`.
 
 Swagger UI (dev profile only): `http://localhost:8080/swagger-ui.html`
-
-Production Swagger UI is not publicly exposed on Render; use the backend health link above to verify the hosted API service.
 
 ### 3) Run frontend
 
@@ -170,56 +179,76 @@ npm run build
 
 ## Docker Compose
 
-Start full app stack (DB + Ollama + backend + frontend):
+Start the full local app stack:
 
 ```bash
 docker compose --profile app up --build
 ```
 
-Notes:
-- App services in Compose run with Docker profile configuration.
-- If you want backend AI classification to use Ollama, set `RESOLVEHUB_AI_PROVIDER=openai-compatible` for the backend environment.
+The Compose backend can use the OpenAI-compatible adapter against local Ollama by setting `RESOLVEHUB_AI_PROVIDER=openai-compatible`.
 
 ## Demo Credentials
 
-When running backend with default `dev` profile, demo data is seeded:
+When the backend runs with the dev profile, demo data is seeded:
 
 - `admin@resolvehub.dev` / `Password123!`
 - `manager@resolvehub.dev` / `Password123!`
 - `agent@resolvehub.dev` / `Password123!`
 - `customer@resolvehub.dev` / `Password123!`
 
+These credentials are for development/controlled demo environments only.
+
 ## AI Behavior
 
 - AI suggestions are advisory only.
 - Suggestions do not automatically update ticket category or priority.
-- The hosted Render demo intentionally uses `fake` provider by default for deterministic, cost-safe public demos without external API keys.
-- Real AI integration is supported through the OpenAI-compatible provider, including local Ollama testing.
+- Staff explicitly review and apply a suggestion.
+- Applying a suggestion uses the normal classification update path and writes an audit-log event.
+- Core ticket operations remain available if the external AI provider is unavailable.
+- The hosted Render deployment uses `gemini-3.5-flash` through Google's OpenAI-compatible Gemini endpoint.
+- Local development/tests can continue using the deterministic `fake` provider or local Ollama.
 
-Example local OpenAI-compatible/Ollama configuration:
+Hosted provider configuration uses environment variables only; API keys are never committed:
 
 ```bash
-export RESOLVEHUB_AI_PROVIDER=openai-compatible
-export RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL=http://127.0.0.1:11434/v1
-export RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY=ollama
-export RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL=llama3.1:8b
+RESOLVEHUB_AI_PROVIDER=openai-compatible
+RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL=gemini-3.5-flash
 ```
 
 See [docs/ai-provider-design.md](docs/ai-provider-design.md).
+
+## Production Deployment
+
+Current hosted topology:
+
+```text
+Render Static Site (React)
+        |
+        v
+Render Web Service (Spring Boot)
+        |
+        +--> Neon PostgreSQL 16 (AWS us-west-2)
+        |
+        +--> Gemini 3.5 Flash (OpenAI-compatible API)
+```
+
+The backend and Neon database are colocated in AWS US West 2 / Oregon to reduce database latency. Flyway migrations rebuild an empty database and validate the current schema automatically.
+
+See [docs/deployment.md](docs/deployment.md) for environment variables and recovery/seeding notes.
 
 ## CI/CD Status
 
 GitHub Actions workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
-GitHub Actions currently provides CI (validation, test, and build checks):
-- repository validation
+GitHub Actions currently provides CI validation for:
+- repository structure
 - backend build and tests (`./mvnw clean verify`)
 - frontend build and tests (`npm run build`, `npm test -- --run`)
-- backend Docker image build validation
-- frontend Docker image build validation
+- backend Docker image build
+- frontend Docker image build
 
-Deployment is hosted on Render (frontend, backend, and managed PostgreSQL).
-Auto-deploy behavior depends on your Render service settings and branch configuration.
+Render handles hosted deployment from the configured branch/service settings.
 
 ## Documentation
 
@@ -232,6 +261,7 @@ Auto-deploy behavior depends on your Render service settings and branch configur
 
 ## Roadmap
 
+- Admin-assisted password reset / user lifecycle controls
 - Server-side pagination and filtering for high-volume ticket lists
 - End-to-end workflow tests across frontend and backend
 - Refresh-token support and session lifecycle hardening
