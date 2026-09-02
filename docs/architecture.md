@@ -2,13 +2,16 @@
 
 ## Overview
 
-ResolveHub is a full-stack customer support ticket platform designed around organization-scoped data, role-based access control, auditable ticket operations, and optional AI-assisted classification.
+ResolveHub is a full-stack customer support ticket platform designed around organization-scoped data, role-based access control, auditable ticket operations, persistent relational storage, and optional AI-assisted classification.
 
-Core principles in the current implementation:
+Core principles:
 
 - Backend is the source of truth for authorization and business rules.
 - Multi-tenancy is enforced by organization scoping on data access.
-- AI suggestions are advisory and isolated from core ticket creation/update flows.
+- Agent visibility is narrower than manager/admin visibility.
+- AI suggestions are advisory and isolated from core ticket workflows.
+- Persisted business changes remain explicit human actions and are audit logged.
+- Database schema evolution is owned by Flyway rather than Hibernate auto-generation.
 
 ## High-level System
 
@@ -17,14 +20,20 @@ React (Vite, TypeScript)
   |
   |  JWT Bearer API calls
   v
-Spring Boot API
+Spring Boot API (Render)
   |
-  +--> PostgreSQL (organizations, users, tickets, comments, audit logs)
+  +--> PostgreSQL
+  |      +--> local Docker PostgreSQL in development
+  |      +--> Neon PostgreSQL 16 in hosted production
   |
   +--> Ticket AI Classifier abstraction
-         +--> Fake provider (default)
-         +--> OpenAI-compatible provider (optional, e.g., Ollama)
+         +--> Fake provider (local/test/default fallback)
+         +--> OpenAI-compatible provider
+                +--> local Ollama
+                +--> Gemini 3.5 Flash in hosted production
 ```
+
+The hosted Render backend and Neon database are both located in the Oregon / AWS US West 2 region to reduce database latency.
 
 ## Backend Modules
 
@@ -32,11 +41,11 @@ Spring Boot API
 - `common.security`: JWT filter, principal mapping, security configuration
 - `organization`: tenant model
 - `user`: user model and role model
-- `ticket`: ticket CRUD/listing/detail, status workflow, assignment, SLA due date, overdue filtering
+- `ticket`: ticket creation/list/detail, classification, status workflow, assignment, SLA due date, overdue filtering
 - `ticketcomment`: ticket comment creation/listing with internal/public visibility rules
 - `audit`: append-only ticket audit logs and visibility rules
-- `ai`: provider abstraction + fake provider + OpenAI-compatible provider
-- `seed`: dev-only demo data seeding
+- `ai`: classifier contract + fake provider + OpenAI-compatible provider
+- `seed`: controlled demo-data seeding
 
 ## Core Domain Model
 
@@ -63,7 +72,7 @@ Spring Boot API
 ### Ticket
 
 - `id` (UUID internal key)
-- `ticketNumber` (human-readable reference, e.g., `RH-1001`)
+- `ticketNumber` (human-readable reference, e.g. `RH-1001`)
 - `organization`
 - `requester`
 - `assignee` (nullable)
@@ -95,50 +104,78 @@ Spring Boot API
 - `details`
 - `createdAt`
 
+## Persistence and Migrations
+
+ResolveHub uses PostgreSQL through Spring Data JPA/Hibernate.
+
+Hibernate is configured with:
+
+```text
+ddl-auto: validate
+```
+
+Flyway is responsible for schema creation/evolution. The current migration chain is `V1` through `V8` and includes the foundation schema, users, tickets, comments, assignment, SLA fields, audit logs, and ticket numbers.
+
+This means a new empty PostgreSQL database can be reconstructed from versioned migrations while Hibernate validates that the mapped entities match the resulting schema.
+
+Hosted production uses persistent Neon PostgreSQL 16 rather than a database tied to Render's free database lifecycle.
+
 ## Security and Multi-tenancy
 
-- JWT is required for all protected endpoints.
-- Public endpoints:
+- JWT is required for protected endpoints.
+- Public backend endpoints include:
   - `/api/auth/**`
   - `/api/health`
   - `/actuator/health`
-  - Swagger/OpenAPI endpoints in `dev` profile
+  - Swagger/OpenAPI only in the `dev` profile
 - CORS is restricted by configured allowed origins.
-- Tenant isolation is enforced in service/repository access using authenticated organization id.
+- Tenant isolation is enforced in service/repository access using the authenticated organization id.
+- AI provider credentials remain backend-only environment secrets and are never exposed to the React client.
 
 ## Role Behavior
 
-- `CUSTOMER`
-  - can create tickets for self
-  - can list/view only own tickets
-  - can comment only on own tickets
-  - cannot create internal comments
-  - cannot assign tickets
-  - cannot view audit logs
-- `AGENT`
-  - can list/view tickets in own organization
-  - can create tickets on behalf of customers in own organization
-  - can create internal/public comments in own organization
-  - can request AI classification
-- `MANAGER`
-  - can list/view tickets in own organization
-  - can create tickets on behalf of customers in own organization
-  - can create organization users with roles `CUSTOMER` or `AGENT`
-  - can create internal/public comments in own organization
-  - can request AI classification
-- `ADMIN`
-  - can list/view tickets in own organization
-  - can create tickets on behalf of customers in own organization
-  - can create organization users with roles `CUSTOMER`, `AGENT`, `MANAGER`, or `ADMIN`
-  - can create internal/public comments in own organization
-  - can request AI classification
-- Assignment-specific behavior:
-  - `AGENT` can assign unassigned tickets only to self
-  - `MANAGER` and `ADMIN` can assign/unassign eligible staff users in own organization
+### `CUSTOMER`
+
+- creates tickets for self
+- lists/views only own tickets
+- comments only on own tickets
+- cannot create internal comments
+- cannot assign tickets
+- cannot view audit logs
+- cannot request/apply AI classification
+
+### `AGENT`
+
+- sees unassigned tickets plus tickets assigned to self inside the organization
+- can create tickets on behalf of organization customers
+- can self-assign an eligible unassigned ticket
+- cannot assign tickets to another staff user or unassign them
+- can work allowed status transitions on tickets assigned to self
+- can create internal/public comments where permitted
+- can request and apply AI classification
+
+### `MANAGER`
+
+- sees/manages organization tickets
+- can create tickets on behalf of organization customers
+- can create `CUSTOMER` and `AGENT` users
+- can assign/unassign eligible staff users
+- can create internal/public comments
+- can request and apply AI classification
+- can view ticket audit logs
+
+### `ADMIN`
+
+- sees/manages organization tickets
+- can create tickets on behalf of organization customers
+- can create `CUSTOMER`, `AGENT`, `MANAGER`, and `ADMIN` users
+- can assign/unassign eligible staff users
+- can request and apply AI classification
+- can view ticket audit logs
 
 ## Ticket Workflow
 
-Allowed transitions implemented in backend:
+Allowed backend transitions:
 
 - `OPEN -> IN_PROGRESS`
 - `OPEN -> CLOSED`
@@ -158,20 +195,20 @@ Customer-specific status permissions:
 
 ## SLA and Overdue Rules
 
-SLA due date is set on ticket creation only:
+SLA due date is set on ticket creation:
 
 - `URGENT`: `createdAt + 4h`
 - `HIGH`: `createdAt + 8h`
 - `MEDIUM`: `createdAt + 24h`
 - `LOW`: `createdAt + 72h`
 
-Overdue is computed dynamically in responses when:
+Overdue is computed dynamically when:
 
 - `slaDueAt < now`, and
 - status is not `RESOLVED`, and
 - status is not `CLOSED`
 
-No scheduler persists overdue state in v1.0.0.
+No scheduler persists overdue state.
 
 ## AI Classification
 
@@ -180,15 +217,31 @@ AI classification is explicit and endpoint-driven:
 - `POST /api/tickets/{ticketId}/ai/classification`
 - `PATCH /api/tickets/{ticketId}/classification`
 
-Suggestion response returns:
+Suggestion response contains:
 
 - suggested category
 - suggested priority
 - short reasoning
 
-Suggestions do not automatically update the ticket. Staff users explicitly apply classification updates through the classification PATCH endpoint.
+The suggestion endpoint is read-only with respect to ticket classification. It calls the configured `TicketAiClassifier`, returns the suggestion, and leaves existing category/priority untouched.
+
+When staff choose to apply a suggestion, the frontend calls the normal classification PATCH endpoint. The backend records old/new category and priority in an audit-log event.
+
+Hosted production uses `OpenAiCompatibleTicketAiClassifier` with Gemini 3.5 Flash. Local/test environments can remain deterministic by using `FakeTicketAiClassifier`.
+
+## Failure Isolation
+
+AI failure does not prevent ticket creation, listing, detail views, comments, assignment, or status changes. Provider errors are surfaced through the AI endpoint as controlled gateway failures.
+
+Database availability remains required for the core application because tickets, identity, and authorization state are persistent relational data.
+
+## Frontend Service Status
+
+The public `/status` route is intentionally separate from authentication. It polls the backend health endpoint and presents a friendly cold-start state while the Render free service wakes.
+
+This keeps users on the ResolveHub frontend instead of exposing the raw Render backend health page as the primary status experience.
 
 ## API Documentation and CI
 
-- OpenAPI docs are available in `dev` profile through Swagger UI.
-- CI pipeline validates repository structure and runs backend + frontend build/test jobs.
+- OpenAPI docs are available only in the `dev` profile through Swagger UI.
+- CI validates repository structure, backend tests/build, frontend tests/build, and Docker image builds.

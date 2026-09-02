@@ -13,8 +13,6 @@ Ticket creation does not call AI.
 
 ## Current Contract
 
-### Interface
-
 `TicketAiClassifier` classifies a ticket and returns a `TicketClassificationSuggestion` with:
 
 - `suggestedCategory`
@@ -25,32 +23,82 @@ Ticket creation does not call AI.
 
 - Suggestions are advisory only.
 - Suggestions do not automatically update ticket category or priority.
-- Staff may apply suggested category/priority explicitly through the classification PATCH endpoint.
-- AI provider failures affect only the AI endpoint response.
-- Core ticket flows (create/list/detail/comment/status/assignment) do not depend on AI availability.
+- Only eligible staff users can request or apply AI classification.
+- Applying a suggestion uses the normal classification update path.
+- Applied category/priority changes are written to the ticket audit log.
+- AI provider failures affect only the AI classification request.
+- Core ticket flows (create/list/detail/comment/status/assignment) do not depend on external AI availability.
+
+This keeps the workflow human-in-the-loop: the model recommends, a staff user decides.
 
 ## Implementations
 
-### 1) `FakeTicketAiClassifier` (default)
+### 1) `FakeTicketAiClassifier`
 
 - Deterministic rule-based implementation.
 - No network calls.
-- Used by default when `resolvehub.ai.provider` is missing or set to `fake`.
-- Keeps local development and tests stable.
-- Used intentionally in the hosted Render demo for deterministic, cost-safe behavior and resilience against external provider downtime.
+- Used when `resolvehub.ai.provider` is missing or set to `fake`.
+- Useful for local development, automated tests, and deterministic demos.
+- Uses ordered keyword rules and a general fallback when no rule matches.
+
+The fake provider is no longer the AI provider used by the hosted Render portfolio deployment.
 
 ### 2) `OpenAiCompatibleTicketAiClassifier`
 
-- HTTP implementation for OpenAI-compatible APIs.
+- HTTP implementation for OpenAI-compatible chat-completions APIs.
 - Calls `POST {baseUrl}/chat/completions`.
-- Sends ticket title/description with instructions to return strict JSON:
+- Uses Bearer authentication when a provider API key is configured.
+- Sends ticket title/description plus instructions to return strict JSON:
   - `category`
   - `priority`
   - `reasoning`
-- Parses and validates response values against ResolveHub enums.
-- Returns controlled provider errors for invalid responses or upstream failures.
+- Parses the assistant response and validates category/priority against ResolveHub enums.
+- Converts invalid/upstream provider responses into controlled gateway errors.
 
-## Configuration
+This adapter is used both for local OpenAI-compatible providers such as Ollama and for Gemini's OpenAI-compatible endpoint in the hosted environment.
+
+## Hosted Production Provider
+
+The current Render deployment uses:
+
+```text
+Provider mode: openai-compatible
+Base URL: https://generativelanguage.googleapis.com/v1beta/openai
+Model: gemini-3.5-flash
+Timeout: 30 seconds
+```
+
+The Gemini API key is stored only as a Render environment secret.
+
+Production environment variables:
+
+```text
+RESOLVEHUB_AI_PROVIDER=openai-compatible
+RESOLVEHUB_AI_OPENAI_COMPATIBLE_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+RESOLVEHUB_AI_OPENAI_COMPATIBLE_API_KEY=<secret>
+RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL=gemini-3.5-flash
+RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS=30
+```
+
+No provider secret is required in frontend code because all AI requests flow through the authenticated ResolveHub backend.
+
+## Verified Human-in-the-loop Flow
+
+The hosted production flow has been smoke-tested end to end:
+
+1. A ticket is created with a human-selected category and priority.
+2. Staff request an AI suggestion from the ticket detail page.
+3. Gemini receives the ticket text through the OpenAI-compatible adapter.
+4. ResolveHub displays suggested category, priority, and reasoning without changing the ticket.
+5. Staff explicitly choose `Apply suggestion`.
+6. The backend updates category/priority through the normal classification endpoint.
+7. The classification change is written to the append-only audit log.
+
+A production smoke test deliberately created a ticket as `OTHER / LOW` while its description strongly implied suspicious access and data exfiltration. Gemini independently returned `SECURITY / URGENT` with security-specific reasoning, demonstrating that the hosted provider was reasoning from ticket content rather than echoing the existing classification.
+
+## Base Configuration
+
+Application properties remain provider-neutral:
 
 ```yaml
 resolvehub:
@@ -71,7 +119,9 @@ Environment variables:
 - `RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL`
 - `RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS`
 
-## Local Ollama Setup (OpenAI-compatible)
+If no provider is configured, ResolveHub defaults to `fake` mode.
+
+## Local Ollama Setup
 
 1. Start Ollama:
 
@@ -79,13 +129,13 @@ Environment variables:
 ollama serve
 ```
 
-2. Pull model:
+2. Pull a model:
 
 ```bash
 ollama pull llama3.1:8b
 ```
 
-3. Run backend with OpenAI-compatible provider:
+3. Run the backend with the OpenAI-compatible provider:
 
 ```bash
 export RESOLVEHUB_AI_PROVIDER=openai-compatible
@@ -95,17 +145,19 @@ export RESOLVEHUB_AI_OPENAI_COMPATIBLE_MODEL=llama3.1:8b
 export RESOLVEHUB_AI_OPENAI_COMPATIBLE_TIMEOUT_SECONDS=20
 ```
 
-If these variables are not set, backend defaults to `fake` provider.
-
-For hosted environments such as Render, a local URL like `http://127.0.0.1:11434` points to that service container itself, not your development machine. Use a provider URL reachable from the hosted runtime.
+A local URL such as `http://127.0.0.1:11434` is not valid for a Render-hosted provider because it points back to the Render container itself.
 
 ## Why This Design
 
-- Keeps domain logic isolated from provider details.
-- Enables deterministic tests without real model calls.
-- Allows future provider additions with minimal service/controller changes.
+- Keeps domain/business logic isolated from provider details.
+- Enables deterministic automated tests without real model calls.
+- Keeps external AI failure isolated from core support workflows.
+- Allows local and hosted providers to share the same adapter.
+- Makes provider replacement an environment/configuration decision instead of a ticket-domain rewrite.
+- Preserves human control over model-suggested business changes.
 
 ## Planned Enhancements
 
-- Persist suggestion history/versioning.
-- Extend prompt controls and provider observability.
+- Persist AI suggestion history/versioning separately from applied classification changes.
+- Add provider latency/error metrics and structured observability.
+- Add richer prompt/version metadata for production troubleshooting.
