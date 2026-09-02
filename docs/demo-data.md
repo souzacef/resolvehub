@@ -1,204 +1,185 @@
 # Demo Data Setup
 
-Use this guide to prepare a useful hosted demo environment in Render.
+Use this guide to prepare or restore the controlled ResolveHub portfolio demo.
 
-## Why This Is Needed
+## Current Hosted Demo Architecture
 
-ResolveHub local development and the hosted Render deployment use separate PostgreSQL databases.
+Local development and the hosted deployment use separate PostgreSQL databases:
 
-- Local development uses the dev profile and seeded demo data.
-- Render uses its own PostgreSQL instance.
-- Data created locally does not appear in Render.
-- If you want a polished hosted demo, you need to create demo users and tickets in the Render app.
+- local development uses Docker PostgreSQL and the `dev` profile;
+- hosted production uses persistent Neon PostgreSQL 16;
+- Render hosts the frontend and backend services;
+- data created locally does not appear in the hosted Neon database.
 
-## Initial Render State
+The production profile keeps demo seeding disabled by default.
 
-When you register a new organization in the hosted Render app, that organization starts with one `ADMIN` user: the account used during registration.
+## Canonical Demo Seeder
 
-That first `ADMIN` user can then create additional users inside the same organization.
+ResolveHub includes an idempotent `DevelopmentDemoDataSeeder`.
 
-## User Management Rules
+It runs automatically in the `dev` profile, or when this property is explicitly enabled:
 
-Within an organization:
+```text
+RESOLVEHUB_SEED_DEMO_ENABLED=true
+```
 
-- `ADMIN` can create `CUSTOMER`, `AGENT`, `MANAGER`, and `ADMIN` users.
-- `MANAGER` can create `CUSTOMER` and `AGENT` users.
-- `CUSTOMER` cannot create users.
-- `AGENT` cannot create users.
+The canonical seeded organization is:
 
-## Recommended Demo Organization
+- `ResolveHub Demo Org`
 
-Create this organization in Render for a clean, portfolio-ready demo:
+Canonical seeded users:
 
-- `Acme Support Demo`
+- `admin@resolvehub.dev` (`ADMIN`)
+- `manager@resolvehub.dev` (`MANAGER`)
+- `agent@resolvehub.dev` (`AGENT`)
+- `customer@resolvehub.dev` (`CUSTOMER`)
 
-## Recommended Demo Users
+Controlled demo password:
 
-Use these accounts for a consistent hosted demo setup:
+```text
+Password123!
+```
 
-- `admin@resolvehub.demo` / `ADMIN`
-- `manager@resolvehub.demo` / `MANAGER`
-- `agent@resolvehub.demo` / `AGENT`
-- `customer@resolvehub.demo` / `CUSTOMER`
-- `customer2@resolvehub.demo` / `CUSTOMER`
+Use this password only for local development or a disposable public portfolio demo. Never reuse it for a real account.
 
-Use `Password123!` only for local development and controlled demo environments. Do not use it for real production accounts.
+## Canonical Seeded Tickets
 
-## Suggested Setup Order
+The current seeder creates/maintains four representative tickets:
 
-1. Register `Acme Support Demo` in the hosted Render app using `admin@resolvehub.demo`.
-2. Sign in as that initial `ADMIN` user.
-3. Open `Organization Users`.
-4. Create `manager@resolvehub.demo`, `agent@resolvehub.demo`, `customer@resolvehub.demo`, and `customer2@resolvehub.demo`.
-5. Sign out and sign back in with the customer accounts to create sample tickets.
-6. Sign back in as staff to assign, classify, comment on, and progress tickets.
+### Production login outage
 
-## Suggested Demo Tickets
-
-Create these tickets with the customer accounts so the hosted demo has a realistic mix of operational work.
-
-### 1. Production login outage
-
-Suggested values:
-
-- Requester: `customer@resolvehub.demo`
+- Status: `IN_PROGRESS`
 - Priority: `URGENT`
 - Category: `TECHNICAL`
-- Status: `IN_PROGRESS`
-- Assignee: `agent@resolvehub.demo`
+- Requester: demo customer
+- Assignee: demo agent
 
-Suggested description:
+### Duplicate charge on monthly invoice
 
-```text
-Several employees cannot log in to the production portal after this morning's deployment. Users report invalid session and timeout messages even after resetting their passwords.
-```
-
-Suggested comments:
-
-- Customer comment: `This is blocking our support team from handling live customer requests.`
-- Staff public comment: `We have reproduced the issue and are investigating authentication failures now.`
-- Staff internal comment: `Possible regression after auth gateway rollout. Check token validation and session cache.`
-
-### 2. Duplicate charge on monthly invoice
-
-Suggested values:
-
-- Requester: `customer2@resolvehub.demo`
+- Status: `WAITING_CUSTOMER`
 - Priority: `HIGH`
 - Category: `BILLING`
-- Status: `WAITING_CUSTOMER`
-- Assignee: `manager@resolvehub.demo`
+- Requester: demo customer
+- Assignee: demo manager
 
-Suggested description:
+### CSV export for ticket list
 
-```text
-Our finance team noticed two identical charges for this month's subscription renewal. Please confirm which charge is valid and how the duplicate will be handled.
-```
-
-Suggested comments:
-
-- Customer comment: `I can provide the invoice PDF and bank statement if needed.`
-- Staff public comment: `We found the duplicate transaction and need the invoice number to complete the refund review.`
-- Staff internal comment: `Refund likely required. Waiting on customer to confirm invoice reference and payment timestamp.`
-
-### 3. Unable to update profile email
-
-Suggested values:
-
-- Requester: `customer@resolvehub.demo`
-- Priority: `MEDIUM`
-- Category: `ACCOUNT`
-- Status: `OPEN`
-- Assignee: Unassigned initially, then assign to `agent@resolvehub.demo` during the demo
-
-Suggested description:
-
-```text
-I can update my profile name and phone number, but changing the account email address fails with a generic error message after saving.
-```
-
-Suggested comments:
-
-- Customer comment: `This happens in Chrome and Firefox.`
-- Staff public comment: `Thanks, we have the report and will test the profile update flow.`
-- Staff internal comment: `Good candidate to demonstrate assignment from unassigned queue.`
-
-### 4. CSV export for ticket list
-
-Suggested values:
-
-- Requester: `customer2@resolvehub.demo`
+- Status: `RESOLVED`
 - Priority: `LOW`
 - Category: `FEATURE_REQUEST`
-- Status: `RESOLVED`
-- Assignee: `manager@resolvehub.demo`
+- Requester: demo customer
+- Assignee: unassigned
 
-Suggested description:
+### Unable to update profile email
 
-```text
-It would help our operations team if the ticket list could be exported as CSV for weekly reporting and trend analysis.
-```
-
-Suggested comments:
-
-- Customer comment: `A CSV export would save us manual copy/paste work every Friday.`
-- Staff public comment: `We logged this feature request and marked it resolved for demo purposes after documenting the requirement.`
-- Staff internal comment: `Useful example of non-incident work in the queue.`
-
-### 5. Suspicious account activity alert
-
-Suggested values:
-
-- Requester: `customer@resolvehub.demo`
-- Priority: `HIGH`
-- Category: `SECURITY`
 - Status: `OPEN`
-- Assignee: `manager@resolvehub.demo`
+- Priority: `MEDIUM`
+- Category: `ACCOUNT`
+- Requester: demo customer
+- Assignee: unassigned
 
-Suggested description:
+The seeder also creates public/internal comments that make the ticket-detail and audit/workflow screens useful immediately.
+
+## Restoring a Fresh Hosted Neon Database
+
+Use this when the hosted database is empty or intentionally rebuilt.
+
+1. Confirm Flyway has created/validated the schema.
+2. In the Render backend environment, set:
+
+   ```text
+   RESOLVEHUB_SEED_DEMO_ENABLED=true
+   ```
+
+3. Deploy the backend.
+4. Confirm the four seeded accounts can authenticate and the canonical tickets are visible.
+5. Set the flag back to:
+
+   ```text
+   RESOLVEHUB_SEED_DEMO_ENABLED=false
+   ```
+
+6. Redeploy.
+7. Confirm the already-created demo data remains present.
+
+The seeder is idempotent, but production should normally keep the flag disabled after initialization so restarts do not continually restore canonical demo values.
+
+## Why One-time Seeding Is Preferred in Production
+
+Leaving the seeder off after initialization lets the hosted database retain changes made during demonstrations, such as:
+
+- ticket assignment;
+- status transitions;
+- comments;
+- AI-applied category/priority changes;
+- audit-log history.
+
+This also makes a backend redeploy a useful persistence smoke test: the data should remain in Neon when the application instance is replaced.
+
+## Hosted AI Demo
+
+The hosted deployment uses Gemini 3.5 Flash through ResolveHub's OpenAI-compatible provider.
+
+AI classification remains advisory:
+
+1. Staff open a ticket.
+2. Staff request `Suggest classification with AI`.
+3. ResolveHub displays suggested category, priority, and reasoning.
+4. The ticket remains unchanged until staff choose `Apply suggestion`.
+5. Applying the suggestion updates the ticket through the normal classification endpoint.
+6. The category/priority change appears in the audit log.
+
+## Recommended Real-AI Smoke Test
+
+For a clear demonstration that the hosted model is reasoning from ticket content, create a new ticket with deliberately weak manual classification:
 
 ```text
-We received an alert about suspicious sign-in attempts from an unfamiliar location. Please confirm whether additional account protection steps are required.
+Title: Strange activity in customer records
+Category: OTHER
+Priority: LOW
+
+Description:
+Three employee sessions originated from countries they have never visited, and several customer files were downloaded around 3 AM. Please investigate immediately and contain the situation.
 ```
 
-Suggested comments:
+Then request an AI classification.
 
-- Customer comment: `The alert referenced logins from a region where our team does not operate.`
-- Staff public comment: `We are reviewing the activity and recommend rotating credentials as a precaution.`
-- Staff internal comment: `Strong ticket to showcase security categorization and audit visibility.`
+In the verified hosted test, Gemini recommended:
 
-## Demo Walkthrough
+- Category: `SECURITY`
+- Priority: `URGENT`
 
-Use this short flow when presenting the hosted app:
+with reasoning based on suspicious geographic access and likely data exfiltration.
 
-1. Register organization
-   Create `Acme Support Demo` in the hosted Render app. This creates the first `ADMIN` account for that organization.
-2. Create users
-   Sign in as the initial admin and create the recommended `MANAGER`, `AGENT`, and `CUSTOMER` users from `Organization Users`.
-3. Create tickets as customer
-   Sign in as `customer@resolvehub.demo` or `customer2@resolvehub.demo` and create the suggested tickets.
-4. Manage tickets as staff
-   Sign in as `ADMIN`, `MANAGER`, or `AGENT` to assign tickets, add comments, move statuses, and review dashboard metrics.
-5. Use AI classification
-   Open a ticket detail page and request an AI category/priority suggestion.
-6. Apply AI suggestion
-   Review the suggestion and apply it manually to demonstrate that AI guidance is advisory, not automatic.
-7. View audit log
-   Open the audit log on the ticket detail page to show the append-only record of ticket lifecycle changes.
+This is a useful demo because the deterministic fake classifier does not receive the ticket's existing category/priority as instructions to echo them, and the human-selected `OTHER / LOW` values visibly differ from the semantic AI recommendation.
 
-## Recommended Demo Outcome
+After reviewing the suggestion, apply it and open the audit log to demonstrate the full human-in-the-loop workflow.
 
-After setup, the hosted Render app should clearly demonstrate:
+## Suggested Portfolio Walkthrough
 
-- Multi-user organization onboarding
-- Role-aware navigation and permissions
-- Customer ticket submission
-- Staff assignment and workflow handling
-- AI-assisted classification
-- Auditability through ticket history and logs
+1. Open the public `Service status` page and wait for ResolveHub to become ready if Render is cold.
+2. Sign in as `ADMIN` or `MANAGER`.
+3. Show dashboard metrics and the seeded ticket queue.
+4. Open an unassigned ticket and demonstrate assignment behavior.
+5. Open a ticket detail page and show comments/SLA metadata.
+6. Create the deliberate `OTHER / LOW` security test ticket.
+7. Request the Gemini classification suggestion.
+8. Review the recommendation without applying it immediately.
+9. Apply the suggestion.
+10. Show the resulting `TICKET_CLASSIFICATION_UPDATED` audit entry.
+
+## Role Notes for the Demo
+
+- `CUSTOMER`: own tickets only
+- `AGENT`: unassigned tickets plus tickets assigned to self
+- `MANAGER`: organization-wide ticket management and limited user creation
+- `ADMIN`: organization-wide ticket/user management
+
+This role split is useful to demonstrate that ResolveHub's permissions are enforced by backend rules, not only by hiding frontend controls.
 
 ## Related Docs
 
 - [README.md](../README.md)
 - [docs/deployment.md](deployment.md)
 - [docs/architecture.md](architecture.md)
+- [docs/ai-provider-design.md](ai-provider-design.md)
