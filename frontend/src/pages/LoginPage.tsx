@@ -144,7 +144,7 @@ export function LoginPage() {
         <span className="login-footer-separator" aria-hidden="true">&middot;</span>
         <a href="https://github.com/souzacef">GitHub</a>
         <span className="login-footer-separator" aria-hidden="true">&middot;</span>
-        <a href="https://resolvehub-0ssp.onrender.com/actuator/health">Backend health</a>
+        <Link to="/status">Service status</Link>
       </footer>
     </div>
   );
