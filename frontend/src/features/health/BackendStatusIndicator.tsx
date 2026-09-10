@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useBackendHealth, type BackendHealthPhase } from './BackendHealthContext';
+import './backendStatusIndicator.css';
 
 const READY_LABEL_DURATION_MS = 4_000;
 
