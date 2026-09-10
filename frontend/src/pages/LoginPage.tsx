@@ -143,8 +143,6 @@ export function LoginPage() {
         <span>Built by Carlos Eduardo Freire de Souza</span>
         <span className="login-footer-separator" aria-hidden="true">&middot;</span>
         <a href="https://github.com/souzacef">GitHub</a>
-        <span className="login-footer-separator" aria-hidden="true">&middot;</span>
-        <Link to="/status">Service status</Link>
       </footer>
     </div>
   );
