@@ -1,0 +1,106 @@
+.public-backend-status-indicator {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 30;
+}
+
+.backend-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  border: 1px solid rgba(214, 228, 220, 0.9);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 24px rgba(4, 24, 15, 0.16);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  backdrop-filter: blur(10px);
+}
+
+.backend-status-indicator-link {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0 0.85rem;
+  color: inherit;
+  text-decoration: none;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.backend-status-indicator-link:hover {
+  background: rgba(238, 244, 240, 0.7);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.backend-status-indicator-link:focus-visible,
+.backend-status-retry:focus-visible {
+  outline: 2px solid rgba(15, 123, 83, 0.4);
+  outline-offset: 2px;
+}
+
+.backend-status-indicator-ready {
+  color: var(--accent);
+}
+
+.backend-status-indicator-unavailable {
+  color: var(--danger);
+}
+
+.backend-status-icon,
+.backend-status-retry svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+.backend-status-spinner {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+  border: 2px solid rgba(89, 114, 102, 0.28);
+  border-top-color: currentColor;
+  border-radius: 999px;
+  animation: backend-status-spin 0.9s linear infinite;
+}
+
+.backend-status-retry {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  place-items: center;
+  margin: 0 0.25rem 0 0;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  background: transparent;
+  color: currentColor;
+  font-family: inherit;
+}
+
+.backend-status-retry:hover {
+  background: var(--panel-soft);
+}
+
+@keyframes backend-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .public-backend-status-indicator {
+    top: 0.85rem;
+    right: 0.85rem;
+  }
+
+  .backend-status-indicator {
+    font-size: 0.78rem;
+  }
+}
