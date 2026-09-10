@@ -1,57 +1,18 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { isBackendUp } from '../features/health/backendHealth';
-
-export const SERVICE_STATUS_POLL_INTERVAL_MS = 2_500;
-export const SERVICE_STATUS_STARTUP_WINDOW_MS = 180_000;
-
-type ServiceStatus = 'checking' | 'ready' | 'unavailable';
+import { useBackendHealth } from '../features/health/BackendHealthContext';
 
 export function BackendStatusPage() {
-  const [status, setStatus] = useState<ServiceStatus>('checking');
-  const [attempt, setAttempt] = useState(0);
+  const { canRetry, phase, ready, retry } = useBackendHealth();
+  const checking =
+    phase === 'checking' || phase === 'waking' || phase === 'still-waking';
 
-  useEffect(() => {
-    let cancelled = false;
-    let retryTimer: number | undefined;
-    const controller = new AbortController();
-    const deadline = Date.now() + SERVICE_STATUS_STARTUP_WINDOW_MS;
-
-    async function checkBackend() {
-      const ready = await isBackendUp(controller.signal);
-      if (cancelled) {
-        return;
-      }
-
-      if (ready) {
-        setStatus('ready');
-        return;
-      }
-
-      if (Date.now() >= deadline) {
-        setStatus('unavailable');
-        return;
-      }
-
-      retryTimer = window.setTimeout(() => {
-        void checkBackend();
-      }, SERVICE_STATUS_POLL_INTERVAL_MS);
-    }
-
-    setStatus('checking');
-    void checkBackend();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-      if (retryTimer !== undefined) {
-        window.clearTimeout(retryTimer);
-      }
-    };
-  }, [attempt]);
-
-  const checking = status === 'checking';
-  const ready = status === 'ready';
+  const statusText = ready
+    ? 'ResolveHub is ready.'
+    : phase === 'still-waking'
+      ? 'ResolveHub is still starting up...'
+      : phase === 'unavailable'
+        ? 'ResolveHub could not be reached yet.'
+        : 'Getting ResolveHub ready...';
 
   return (
     <div className="login-page">
@@ -88,21 +49,17 @@ export function BackendStatusPage() {
 
         <div aria-live="polite">
           <p style={{ marginBottom: '0.65rem', color: 'var(--text)', fontWeight: 600 }}>
-            {ready
-              ? 'ResolveHub is ready.'
-              : status === 'unavailable'
-                ? 'ResolveHub is taking longer than expected to respond.'
-                : 'Getting ResolveHub ready...'}
+            {statusText}
           </p>
           {checking ? (
             <p style={{ marginBottom: '1rem' }}>
-              The service may take a couple of minutes to wake after a period of inactivity.
+              The service may take a few minutes to wake after a period of inactivity.
             </p>
           ) : null}
         </div>
 
-        {status === 'unavailable' ? (
-          <button type="button" onClick={() => setAttempt((current) => current + 1)}>
+        {canRetry && !ready ? (
+          <button type="button" onClick={retry}>
             Try again
           </button>
         ) : null}
