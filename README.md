@@ -5,12 +5,12 @@ ResolveHub is a portfolio-ready full-stack customer support ticket platform. It 
 ## Live Demo
 
 - Frontend: https://resolvehub-frontend.onrender.com
-- Service status: https://resolvehub-frontend.onrender.com/status
+- Detailed service status: https://resolvehub-frontend.onrender.com/status
 - API docs: Swagger/OpenAPI is available locally in the dev profile at `http://localhost:8080/swagger-ui.html`.
 - Hosted demo data guide: [docs/demo-data.md](docs/demo-data.md)
 - Deployment: Render frontend + backend, with persistent Neon PostgreSQL 16
 
-Note: the hosted backend uses Render's free tier and may take a couple of minutes to wake after inactivity. The frontend service-status page polls the backend and reports when ResolveHub is ready.
+Note: the hosted backend uses Render's free tier and may take a few minutes to wake after inactivity. The frontend automatically starts checking and waking the backend when the public auth experience opens. A compact readiness indicator shows startup progress, offers a soft retry after roughly 2.5 minutes while polling continues, and links to the detailed service-status page. The service is only treated as unavailable after a longer startup window.
 
 ## What This Project Demonstrates
 
@@ -45,7 +45,7 @@ Note: the hosted backend uses Render's free tier and may take a couple of minute
 - Manual apply workflow for AI category/priority suggestions
 - Audit logging when staff apply a classification change
 - Ticket search and filtering (search, status, priority, category, overdue)
-- Public service-status page for Render cold starts
+- Automatic Render backend wake-up with a non-blocking readiness indicator and reusable detailed status page
 - Render deployment with persistent Neon PostgreSQL
 - Controlled demo data seeding
 - GitHub Actions CI
